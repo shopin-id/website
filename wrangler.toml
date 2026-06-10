@@ -9,12 +9,12 @@ compatibility_flags = [ "nodejs_compat" ]
 # Gunakan command: npx wrangler kv:namespace create "CACHE_KV"
 [[kv_namespaces]]
 binding = "CACHE_KV"
-id = "69d4e5e5b12c4479a2d217fdb02a6b2e"
+id = "8971a02eedf043389dfcd9015c02def9"
 
 # [BACA] Binding untuk Cloudflare D1 (Database SQL)
 # Gunakan command: npx wrangler d1 create premium-store-db
 [[d1_databases]]
 binding = "DB"
 database_name = "shopinid"
-database_id = "fd242601-18a1-4611-9ecf-7e8db0fdf0e5"
+database_id = "12479d96-5818-4b80-9760-32e439aa5bb6"
 migrations_dir = "d1/migrations"
