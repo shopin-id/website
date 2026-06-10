@@ -1,5 +1,5 @@
 import { createRoute } from 'honox/factory'
-import { getAuthUser } from '../../../../utils/auth'
+import { getAuthUser } from '../../../utils/auth'
 
 // Generator ID & Slug standar HonoX
 const generateId = () => Math.random().toString(36).substring(2, 12).toUpperCase()
@@ -87,22 +87,18 @@ export default createRoute(async (c) => {
         </a>
       </div>
 
-      {/* Form Standar - Tidak Memerlukan Multipart Server-side karena File Diproses via JavaScript API */}
       <form method="POST" className="space-y-6" id="product-form">
         
         {/* AREA DRAG & DROP UNTUK UNGGAH GAMBAR REALTIME */}
         <div className="bg-gray-50 p-5 rounded-sm border border-gray-200 shadow-inner">
            <h3 className="text-sm font-black uppercase tracking-widest text-gray-800 mb-4">Galeri Foto Produk</h3>
            
-           {/* Grid Pratinjau Visual Gambar */}
            <div id="image-preview-grid" className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-5">
               {/* Hasil kembalian link gambar dipajang di sini */}
            </div>
 
-           {/* Wadah Rahasia Penampung Hidden Inputs images[] */}
            <div id="hidden-images-container" className="hidden"></div>
 
-           {/* Kotak Zona Upload File */}
            <div className="relative border-2 border-dashed border-gray-300 bg-white rounded-sm p-8 text-center hover:bg-gray-50 transition-colors group cursor-pointer">
               <input 
                 type="file" 
@@ -174,11 +170,11 @@ export default createRoute(async (c) => {
               </div>
               <div>
                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Jumlah Stok</label>
-                 <input type="number" name="stock" required value="1" className="w-full border border-gray-300 px-3 py-2 text-sm rounded-sm focus:ring-black font-bold" />
+                 <input type="number" name="stock" required defaultValue="1" className="w-full border border-gray-300 px-3 py-2 text-sm rounded-sm focus:ring-black font-bold" />
               </div>
               <div>
                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Berat Gram</label>
-                 <input type="number" name="weight" required value="500" className="w-full border border-gray-300 px-3 py-2 text-sm rounded-sm focus:ring-black" />
+                 <input type="number" name="weight" required defaultValue="500" className="w-full border border-gray-300 px-3 py-2 text-sm rounded-sm focus:ring-black" />
               </div>
               <div className="md:col-span-2">
                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Status Visibilitas Web</label>
@@ -250,9 +246,6 @@ export default createRoute(async (c) => {
         </div>
       </form>
 
-      {/* ========================================================
-          SCRIPT REUSE UNTUK INTEGRASI API MEDIA INTERNAL PLATFORM
-          ======================================================== */}
       <script dangerouslySetInnerHTML={{__html: `
         const fileInput = document.getElementById('image-upload-input');
         const grid = document.getElementById('image-preview-grid');
@@ -264,10 +257,8 @@ export default createRoute(async (c) => {
             const files = Array.from(event.target.files);
             
             for (const file of files) {
-                // 1. Buat ID unik sementara untuk penanda loading
                 const tempId = 'loading-' + Math.random().toString(36).substring(2, 9);
                 
-                // 2. Suntik komponen visual loading placeholder ke dalam grid
                 const loadCard = document.createElement('div');
                 loadCard.id = tempId;
                 loadCard.className = "border border-dashed border-gray-300 rounded-sm bg-gray-100 flex flex-col items-center justify-center text-[10px] font-bold uppercase tracking-wider text-gray-400 aspect-square animate-pulse text-center p-2";
@@ -277,10 +268,9 @@ export default createRoute(async (c) => {
                 \`;
                 grid.appendChild(loadCard);
 
-                // 3. REUSE UTAMA: Kirim data file ke endpoint internal milik repositori Anda
                 try {
                     const apiData = new FormData();
-                    apiData.append('file', file); // Menyesuaikan nama field internal API media Anda
+                    apiData.append('file', file);
 
                     const response = await fetch('/api/media', {
                         method: 'POST',
@@ -290,9 +280,8 @@ export default createRoute(async (c) => {
                     if (!response.ok) throw new Error('Gagal memproses API Media');
                     
                     const result = await response.json();
-                    const urlAset = result.url; // Menangkap secure_url dari Cloudinary lewat API Anda
+                    const urlAset = result.url;
 
-                    // 4. Ubah loading placeholder jadi box preview gambar asli
                     loadCard.removeAttribute('id');
                     loadCard.className = "relative group border border-gray-200 rounded-sm overflow-hidden bg-white aspect-square shadow-sm animate-fadeIn";
                     
@@ -307,7 +296,6 @@ export default createRoute(async (c) => {
                         </div>
                     \`;
 
-                    // 5. Masukkan hidden input agar url terkumpul dan terbaca saat disubmit
                     const hiddenInput = document.createElement('input');
                     hiddenInput.type = 'hidden';
                     hiddenInput.name = 'images[]';
@@ -324,10 +312,9 @@ export default createRoute(async (c) => {
                     setTimeout(() => loadCard.remove(), 3000);
                 }
             }
-            fileInput.value = ''; // Reset input agar bisa upload file yang sama
+            fileInput.value = ''; 
         });
 
-        // Pengatur posisi dinamis untuk indikator Foto Utama (Index 0)
         window.refreshMainBadge = function() {
             const cards = grid.querySelectorAll('div.group');
             cards.forEach((card, index) => {
@@ -342,9 +329,8 @@ export default createRoute(async (c) => {
             });
         };
 
-        // Kunci form saat dikirim agar aman dari duplikasi submit
         form.addEventListener('submit', function() {
-            btnSubmit.innerHTML = 'Memproses Katalog...';
+            btnSubmit.innerHTML = 'Memproses...';
             btnSubmit.classList.add('opacity-50', 'cursor-not-allowed');
             btnSubmit.disabled = true;
         });
