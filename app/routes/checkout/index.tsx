@@ -14,14 +14,40 @@ export default createRoute(async (c) => {
           <p className="text-sm text-red-700">Email yang Anda masukkan sudah terdaftar. Silakan <a href="/login" className="font-bold underline hover:text-black">Masuk (Login)</a> terlebih dahulu atau gunakan email lain.</p>
         </div>
       )}
+
+      {/* NOTIFIKASI JIKA KERANJANG KOSONG */}
+      {err === 'empty_cart' && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
+          <p className="text-sm text-yellow-700">Keranjang belanja Anda kosong atau gagal terbaca. Silakan tambahkan produk terlebih dahulu.</p>
+        </div>
+      )}
       
-      <form action="/checkout/process" method="POST" className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Input Keranjang (Diisi oleh client.ts) */}
+      <form action="/checkout/process" method="POST" className="grid grid-cols-1 md:grid-cols-2 gap-8" id="checkoutForm">
+        {/* Input Keranjang Tersembunyi */}
         <input type="hidden" name="cart_data" id="cartDataInput" value="[]" />
+
+        {/* SCRIPT PENYELAMAT: Injeksi langsung saat form disubmit, bukan menunggu DOMContentLoaded */}
+        <script dangerouslySetInnerHTML={{__html: `
+          const form = document.getElementById('checkoutForm');
+          if (form) {
+            form.addEventListener('submit', function(e) {
+              const cart = localStorage.getItem('shopin_cart') || '[]';
+              document.getElementById('cartDataInput').value = cart;
+              
+              if(cart === '[]') {
+                e.preventDefault();
+                alert('Keranjang belanja Anda kosong!');
+                window.location.href = '/products';
+              }
+            });
+            // Set nilai awal untuk berjaga-jaga jika di-refresh
+            document.getElementById('cartDataInput').value = localStorage.getItem('shopin_cart') || '[]';
+          }
+        `}} />
 
         <div className="space-y-8">
           
-          {/* Blok Pendaftaran Otomatis (Hanya muncul jika belum login) */}
+          {/* Blok Pendaftaran Otomatis */}
           {!user && (
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <h2 className="text-xl font-semibold mb-4 border-b pb-2">Informasi Akun (Pendaftaran)</h2>
