@@ -1,0 +1,20 @@
+name = "shopinid"
+compatibility_date = "2024-03-04"
+pages_build_output_dir = "./dist"
+
+# NODEJS COMPABILITY
+compatibility_flags = [ "nodejs_compat" ]
+
+# [BACA] Binding untuk Cloudflare KV (Smart Caching)
+# Gunakan command: npx wrangler kv:namespace create "CACHE_KV"
+[[kv_namespaces]]
+binding = "CACHE_KV"
+id = "69d4e5e5b12c4479a2d217fdb02a6b2e"
+
+# [BACA] Binding untuk Cloudflare D1 (Database SQL)
+# Gunakan command: npx wrangler d1 create premium-store-db
+[[d1_databases]]
+binding = "DB"
+database_name = "shopinid"
+database_id = "fd242601-18a1-4611-9ecf-7e8db0fdf0e5"
+migrations_dir = "d1/migrations"
