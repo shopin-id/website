@@ -4,7 +4,7 @@ export default jsxRenderer(({ children, title }) => {
   return (
     <html lang="id">
       <head>
-        <meta charset="utf-8" />
+        <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <title>{title ? `${title} | ShopinId` : 'ShopinId - Belanja Barang Mewah Autentik'}</title>
         
@@ -66,7 +66,7 @@ export default jsxRenderer(({ children, title }) => {
                     <a href="/categories" className="text-xs text-gray-300 hover:text-white transition-colors">See All &gt;</a>
                   </div>
                   
-                  {/* Daftar 10 Kategori Induk Ber-child (Sesuai Data HTML Anda) */}
+                  {/* Daftar 10 Kategori Induk Ber-child (Sesuai Data HTML) */}
                   <ul className="py-2 flex flex-col text-[13px] font-normal">
                     <li><a href="/products?category=snack-dessert" className="block px-5 py-2.5 hover:text-red-600 hover:bg-gray-50 transition-colors">Snack Dessert</a></li>
                     <li><a href="/products?category=recreational-fishing-gear" className="block px-5 py-2.5 hover:text-red-600 hover:bg-gray-50 transition-colors">Recreational Fishing Gear</a></li>
@@ -83,6 +83,7 @@ export default jsxRenderer(({ children, title }) => {
               </div>
               
               <a href="/products" className="hover:text-gray-300 transition-colors">Semua Produk</a>
+              <a href="/products?category=luxury" className="hover:text-gray-300 transition-colors">Luxury</a>
             </nav>
             
             {/* Bar Pencarian (Desktop) DENGAN LIVE AJAX DROPDOWN */}
@@ -106,15 +107,19 @@ export default jsxRenderer(({ children, title }) => {
               </div>
             </div>
 
-            {/* Ikon Aksi Kanan (Desktop) */}
+            {/* Ikon Aksi Kanan (Desktop) DENGAN BULATAN CART COUNTER */}
             <div className="flex items-center space-x-6 ml-8 hidden md:flex text-sm font-medium">
               <a href="/account" className="flex items-center hover:text-gray-300 transition-colors">
                 <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                 Akun Saya
               </a>
-              <a href="/checkout" className="flex items-center hover:text-gray-300 transition-colors bg-white/10 px-3 py-1.5 rounded-sm">
+              <a href="/cart" className="relative flex items-center hover:text-gray-300 transition-colors bg-white/10 px-3 py-1.5 rounded-sm">
                 <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                 Keranjang
+                {/* Bulatan Angka Keranjang */}
+                <span className="cart-counter absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-md">
+                  0
+                </span>
               </a>
             </div>
           </div>
@@ -146,7 +151,7 @@ export default jsxRenderer(({ children, title }) => {
           {children}
         </main>
 
-        {/* === FOOTER ASLI DIKEMBALIKAN UTUH === */}
+        {/* === FOOTER ASLI === */}
         <footer className="bg-black text-white py-12 mt-auto w-full border-t-4 border-gray-900 mb-16 md:mb-0">
           <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
@@ -184,7 +189,7 @@ export default jsxRenderer(({ children, title }) => {
           </div>
         </footer>
 
-        {/* === STICKY MOBILE BOTTOM NAVIGATION === */}
+        {/* === STICKY MOBILE BOTTOM NAVIGATION DENGAN BULATAN CART COUNTER === */}
         <div className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 z-[9999] flex justify-between items-center px-6 py-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
           <a href="/" className="flex flex-col items-center text-gray-500 hover:text-black">
             <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
@@ -202,7 +207,11 @@ export default jsxRenderer(({ children, title }) => {
             <span className="text-[10px] font-bold mt-1">Vendor</span>
           </a>
           
-          <a href="/checkout" className="flex flex-col items-center text-gray-500 hover:text-black">
+          <a href="/cart" className="relative flex flex-col items-center text-gray-500 hover:text-black">
+            {/* Bulatan Angka Keranjang Mobile */}
+            <span className="cart-counter absolute -top-1.5 -right-2 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-md z-10">
+              0
+            </span>
             <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
             <span className="text-[10px] font-bold">Cart</span>
           </a>
@@ -225,14 +234,12 @@ export default jsxRenderer(({ children, title }) => {
               clearTimeout(debounceTimer);
               const query = e.target.value.trim();
 
-              // Trigger minimal 3 digit
               if (query.length < 3) {
                 resultsBox.classList.add('hidden');
                 resultsBox.innerHTML = '';
                 return;
               }
 
-              // Loading state interaktif
               resultsBox.classList.remove('hidden');
               resultsBox.innerHTML = '<div class="p-4 text-xs font-bold text-center text-gray-400">Mencari...</div>';
 
@@ -261,7 +268,6 @@ export default jsxRenderer(({ children, title }) => {
                       \`;
                     }).join('');
                     
-                    // Tombol lihat semua hasil
                     html += \`
                       <a href="/products?q=\${encodeURIComponent(query)}" class="block text-center p-3 text-[11px] font-bold text-blue-600 bg-blue-50/50 hover:bg-blue-50 uppercase tracking-widest">
                         Lihat Semua Hasil Pencarian 
@@ -275,17 +281,15 @@ export default jsxRenderer(({ children, title }) => {
                 } catch (error) {
                   resultsBox.innerHTML = '<div class="p-4 text-xs text-center text-red-500">Terjadi kesalahan. Silakan tekan Enter untuk mencari.</div>';
                 }
-              }, 400); // 400ms Debounce agar server D1 Anda tidak jebol
+              }, 400);
             });
 
-            // Tutup dropdown jika user klik di luar area pencarian
             document.addEventListener('click', function(e) {
               if (!input.contains(e.target) && !resultsBox.contains(e.target)) {
                 resultsBox.classList.add('hidden');
               }
             });
             
-            // Tampilkan kembali jika user klik input dan sudah ada isinya
             input.addEventListener('focus', function(e) {
               if (e.target.value.trim().length >= 3) {
                 resultsBox.classList.remove('hidden');
@@ -293,7 +297,6 @@ export default jsxRenderer(({ children, title }) => {
             });
           }
 
-          // Inisialisasi untuk Desktop dan Mobile
           initLiveSearch('search-desktop', 'results-desktop');
           initLiveSearch('search-mobile', 'results-mobile');
         `}} />
