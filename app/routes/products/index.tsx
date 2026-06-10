@@ -5,18 +5,61 @@ export default createRoute(async (c) => {
   const db = c.env.DB
   const user = await getAuthUser(c)
   
+  // Tangkap parameter query dari URL (misal: ?category=bags)
+  const categorySlug = c.req.query('category')
+  
   let products = []
-  if (user) {
-    const { results } = await db.prepare(`
-      SELECT p.*, CASE WHEN w.product_id IS NOT NULL THEN 1 ELSE 0 END as is_wishlisted 
-      FROM products p 
-      LEFT JOIN wishlists w ON p.id = w.product_id AND w.user_id = ? 
-      ORDER BY p.created_at DESC
-    `).bind(user.id).all()
-    products = results
+  
+  if (categorySlug) {
+    // =========================================================================
+    // JIKA ADA FILTER KATEGORI: Gunakan RECURSIVE CTE untuk mengambil induk + anak
+    // =========================================================================
+    if (user) {
+      const { results } = await db.prepare(`
+        WITH RECURSIVE CategoryTree AS (
+            SELECT id FROM categories WHERE slug = ?1
+            UNION ALL
+            SELECT c.id FROM categories c
+            INNER JOIN CategoryTree ct ON c.parent_id = ct.id
+        )
+        SELECT p.*, CASE WHEN w.product_id IS NOT NULL THEN 1 ELSE 0 END as is_wishlisted 
+        FROM products p 
+        LEFT JOIN wishlists w ON p.id = w.product_id AND w.user_id = ?2
+        WHERE p.category_id IN (SELECT id FROM CategoryTree)
+        ORDER BY p.created_at DESC
+      `).bind(categorySlug, user.id).all()
+      products = results
+    } else {
+      const { results } = await db.prepare(`
+        WITH RECURSIVE CategoryTree AS (
+            SELECT id FROM categories WHERE slug = ?
+            UNION ALL
+            SELECT c.id FROM categories c
+            INNER JOIN CategoryTree ct ON c.parent_id = ct.id
+        )
+        SELECT p.*, 0 as is_wishlisted 
+        FROM products p 
+        WHERE p.category_id IN (SELECT id FROM CategoryTree)
+        ORDER BY p.created_at DESC
+      `).bind(categorySlug).all()
+      products = results
+    }
   } else {
-    const { results } = await db.prepare("SELECT *, 0 as is_wishlisted FROM products ORDER BY created_at DESC").all()
-    products = results
+    // =========================================================================
+    // JIKA TIDAK ADA FILTER KATEGORI: Tampilkan semua produk seperti biasa
+    // =========================================================================
+    if (user) {
+      const { results } = await db.prepare(`
+        SELECT p.*, CASE WHEN w.product_id IS NOT NULL THEN 1 ELSE 0 END as is_wishlisted 
+        FROM products p 
+        LEFT JOIN wishlists w ON p.id = w.product_id AND w.user_id = ? 
+        ORDER BY p.created_at DESC
+      `).bind(user.id).all()
+      products = results
+    } else {
+      const { results } = await db.prepare("SELECT *, 0 as is_wishlisted FROM products ORDER BY created_at DESC").all()
+      products = results
+    }
   }
 
   return c.render(
@@ -24,7 +67,9 @@ export default createRoute(async (c) => {
       <div className="max-w-7xl mx-auto">
         
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Semua Produk</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {categorySlug ? `Kategori: ${categorySlug.replace(/-/g, ' ').toUpperCase()}` : 'Semua Produk'}
+          </h1>
           <p className="text-sm text-gray-500">Menampilkan {products.length} item dari koleksi ShopinId.</p>
         </div>
 
@@ -80,13 +125,16 @@ export default createRoute(async (c) => {
           })}
         </div>
 
-        <div className="flex justify-center items-center mt-12 space-x-2">
-           <button className="w-10 h-10 rounded-full bg-black text-white text-sm font-bold">1</button>
-           <button className="w-10 h-10 rounded-full bg-white border border-gray-300 text-gray-600 text-sm hover:bg-gray-100">2</button>
-           <button className="w-10 h-10 rounded-full bg-white border border-gray-300 text-gray-600 text-sm hover:bg-gray-100">3</button>
-           <span className="text-gray-400 px-2">...</span>
-           <button className="w-10 h-10 rounded-full bg-white border border-gray-300 text-gray-600 text-sm hover:bg-gray-100">20</button>
-        </div>
+        {/* Paginasi Sementara */}
+        {products.length > 0 && (
+          <div className="flex justify-center items-center mt-12 space-x-2">
+             <button className="w-10 h-10 rounded-full bg-black text-white text-sm font-bold">1</button>
+             <button className="w-10 h-10 rounded-full bg-white border border-gray-300 text-gray-600 text-sm hover:bg-gray-100">2</button>
+             <button className="w-10 h-10 rounded-full bg-white border border-gray-300 text-gray-600 text-sm hover:bg-gray-100">3</button>
+             <span className="text-gray-400 px-2">...</span>
+             <button className="w-10 h-10 rounded-full bg-white border border-gray-300 text-gray-600 text-sm hover:bg-gray-100">20</button>
+          </div>
+        )}
 
       </div>
     </div>
