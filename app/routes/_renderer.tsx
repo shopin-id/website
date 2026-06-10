@@ -1,4 +1,5 @@
 import { jsxRenderer } from 'hono/jsx-renderer'
+import { Script } from 'honox/server' // <--- INI SANGAT PENTING
 
 export default jsxRenderer(({ children, title }) => {
   return (
@@ -7,6 +8,9 @@ export default jsxRenderer(({ children, title }) => {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <title>{title ? `${title} | ShopinId` : 'ShopinId - Belanja Barang Mewah Autentik'}</title>
+        
+        {/* SUNTIKAN JAVASCRIPT KLIEN (NYAWA KERANJANG) */}
+        <Script src="/app/client.ts" async />
         
         {/* Tailwind CDN */}
         <script src="https://cdn.tailwindcss.com"></script>
@@ -45,10 +49,9 @@ export default jsxRenderer(({ children, title }) => {
               </a>
             </div>
 
-            {/* Menu Navigasi Kategori (Desktop) DENGAN DROPDOWN SESUAI SCREENSHOT */}
+            {/* Menu Navigasi Kategori (Desktop) DENGAN DROPDOWN MEGA */}
             <nav className="hidden md:flex items-center space-x-6 text-sm font-semibold mr-6 flex-shrink-0 h-full">
               
-              {/* Dropdown Kategori Induk */}
               <div className="relative group py-2">
                 <button className="flex items-center hover:text-gray-300 transition-colors focus:outline-none cursor-pointer pb-1">
                   Kategori
@@ -57,16 +60,12 @@ export default jsxRenderer(({ children, title }) => {
                   </svg>
                 </button>
                 
-                {/* Kotak Dropdown (Muncul saat Hover) */}
                 <div className="absolute top-[100%] left-0 w-72 bg-white text-gray-800 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[110] flex flex-col rounded-b-sm overflow-hidden">
-                  
-                  {/* Header Hitam Kategori | See All */}
                   <div className="bg-black text-white px-5 py-3 flex justify-between items-center border-t border-gray-800">
                     <span className="font-bold text-[15px]">Kategori</span>
                     <a href="/categories" className="text-xs text-gray-300 hover:text-white transition-colors">See All &gt;</a>
                   </div>
                   
-                  {/* Daftar 10 Kategori Induk Ber-child (Sesuai Data HTML) */}
                   <ul className="py-2 flex flex-col text-[13px] font-normal">
                     <li><a href="/products?category=snack-dessert" className="block px-5 py-2.5 hover:text-red-600 hover:bg-gray-50 transition-colors">Snack Dessert</a></li>
                     <li><a href="/products?category=recreational-fishing-gear" className="block px-5 py-2.5 hover:text-red-600 hover:bg-gray-50 transition-colors">Recreational Fishing Gear</a></li>
@@ -86,7 +85,7 @@ export default jsxRenderer(({ children, title }) => {
               <a href="/products?category=luxury" className="hover:text-gray-300 transition-colors">Luxury</a>
             </nav>
             
-            {/* Bar Pencarian (Desktop) DENGAN LIVE AJAX DROPDOWN */}
+            {/* Bar Pencarian (Desktop) */}
             <div className="flex-grow max-w-xl relative hidden md:block group">
               <form action="/products" method="GET">
                 <input 
@@ -101,10 +100,7 @@ export default jsxRenderer(({ children, title }) => {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </button>
               </form>
-              {/* Dropdown Live Search Desktop */}
-              <div id="results-desktop" className="absolute top-full mt-1 left-0 w-full bg-white rounded-sm shadow-2xl border border-gray-200 z-[100] hidden max-h-96 overflow-y-auto custom-scrollbar text-black divide-y divide-gray-100">
-                {/* Hasil AJAX akan disuntikkan ke sini */}
-              </div>
+              <div id="results-desktop" className="absolute top-full mt-1 left-0 w-full bg-white rounded-sm shadow-2xl border border-gray-200 z-[100] hidden max-h-96 overflow-y-auto custom-scrollbar text-black divide-y divide-gray-100"></div>
             </div>
 
             {/* Ikon Aksi Kanan (Desktop) DENGAN BULATAN CART COUNTER */}
@@ -116,15 +112,12 @@ export default jsxRenderer(({ children, title }) => {
               <a href="/cart" className="relative flex items-center hover:text-gray-300 transition-colors bg-white/10 px-3 py-1.5 rounded-sm">
                 <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                 Keranjang
-                {/* Bulatan Angka Keranjang */}
-                <span className="cart-counter absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-md">
-                  0
-                </span>
+                <span className="cart-counter absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-md">0</span>
               </a>
             </div>
           </div>
 
-          {/* Bar Pencarian Mobile DENGAN LIVE AJAX DROPDOWN */}
+          {/* Bar Pencarian Mobile */}
           <div className="md:hidden w-full px-4 pb-4 relative">
             <form action="/products" method="GET" className="relative">
               <input 
@@ -139,10 +132,7 @@ export default jsxRenderer(({ children, title }) => {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
               </button>
             </form>
-            {/* Dropdown Live Search Mobile */}
-            <div id="results-mobile" className="absolute top-full mt-1 left-4 right-4 bg-white rounded-sm shadow-2xl border border-gray-200 z-[100] hidden max-h-80 overflow-y-auto custom-scrollbar text-black divide-y divide-gray-100">
-              {/* Hasil AJAX akan disuntikkan ke sini */}
-            </div>
+            <div id="results-mobile" className="absolute top-full mt-1 left-4 right-4 bg-white rounded-sm shadow-2xl border border-gray-200 z-[100] hidden max-h-80 overflow-y-auto custom-scrollbar text-black divide-y divide-gray-100"></div>
           </div>
         </header>
 
@@ -189,7 +179,7 @@ export default jsxRenderer(({ children, title }) => {
           </div>
         </footer>
 
-        {/* === STICKY MOBILE BOTTOM NAVIGATION DENGAN BULATAN CART COUNTER === */}
+        {/* === STICKY MOBILE BOTTOM NAVIGATION === */}
         <div className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 z-[9999] flex justify-between items-center px-6 py-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
           <a href="/" className="flex flex-col items-center text-gray-500 hover:text-black">
             <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
@@ -208,10 +198,7 @@ export default jsxRenderer(({ children, title }) => {
           </a>
           
           <a href="/cart" className="relative flex flex-col items-center text-gray-500 hover:text-black">
-            {/* Bulatan Angka Keranjang Mobile */}
-            <span className="cart-counter absolute -top-1.5 -right-2 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-md z-10">
-              0
-            </span>
+            <span className="cart-counter absolute -top-1.5 -right-2 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-md z-10">0</span>
             <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
             <span className="text-[10px] font-bold">Cart</span>
           </a>
