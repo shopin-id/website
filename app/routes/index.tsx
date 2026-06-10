@@ -53,6 +53,26 @@ export default createRoute(async (c) => {
 
       if (products.length === 0) return null
 
+      // ==========================================
+      // ALGORITMA PAGINASI DINAMIS (SMART SLIDING WINDOW)
+      // ==========================================
+      let pageNumbers: (number | string)[] = []
+      if (totalPages <= 5) {
+        // Jika total halaman sedikit, tampilkan semua
+        pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1)
+      } else {
+        if (currentPage <= 3) {
+          // Window di awal
+          pageNumbers = [1, 2, 3, 4, 5, '...', totalPages]
+        } else if (currentPage >= totalPages - 2) {
+          // Window di akhir
+          pageNumbers = [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages]
+        } else {
+          // Window di tengah
+          pageNumbers = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages]
+        }
+      }
+
       return (
         <section key={widget.id} className="w-full bg-[#f4f7fc] py-12 md:py-16 px-4 md:px-8 border-b border-gray-100">
           <div className="max-w-7xl mx-auto">
@@ -93,16 +113,44 @@ export default createRoute(async (c) => {
               })}
             </div>
 
+            {/* RENDER PAGINASI DINAMIS */}
             {totalPages > 1 && (
-              <div className="flex justify-center items-center space-x-2 mt-16">
-                {Array.from({ length: totalPages }).map((_, idx) => {
-                  const pageNum = idx + 1
+              <div className="flex justify-center items-center space-x-1.5 md:space-x-2 mt-12 md:mt-16">
+                
+                {/* Tombol Previous */}
+                <a 
+                  href={currentPage > 1 ? `/?page=${currentPage - 1}` : '#'} 
+                  className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center border transition-all ${currentPage <= 1 ? 'opacity-40 cursor-not-allowed bg-gray-50 text-gray-400' : 'bg-white text-gray-600 border-gray-200 hover:border-black hover:text-black hover:shadow-sm'}`}
+                  aria-disabled={currentPage <= 1}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                </a>
+
+                {/* Deretan Angka Smart Window */}
+                {pageNumbers.map((num, idx) => {
+                  if (num === '...') {
+                    return <span key={`dots-${idx}`} className="text-gray-400 px-1 text-xs md:text-sm font-bold tracking-widest">...</span>
+                  }
                   return (
-                    <a key={pageNum} href={`/?page=${pageNum}`} className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border transition-all ${pageNum === currentPage ? 'bg-black text-white border-black shadow-md scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-black hover:text-black'}`}>
-                      {pageNum}
+                    <a 
+                      key={num} 
+                      href={`/?page=${num}`} 
+                      className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs md:text-sm font-bold border transition-all ${num === currentPage ? 'bg-black text-white border-black shadow-md scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-black hover:text-black'}`}
+                    >
+                      {num}
                     </a>
                   )
                 })}
+
+                {/* Tombol Next */}
+                <a 
+                  href={currentPage < totalPages ? `/?page=${currentPage + 1}` : '#'} 
+                  className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center border transition-all ${currentPage >= totalPages ? 'opacity-40 cursor-not-allowed bg-gray-50 text-gray-400' : 'bg-white text-gray-600 border-gray-200 hover:border-black hover:text-black hover:shadow-sm'}`}
+                  aria-disabled={currentPage >= totalPages}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                </a>
+
               </div>
             )}
           </div>
@@ -181,7 +229,6 @@ export default createRoute(async (c) => {
               </div>
             </div>
 
-            {/* Skrip Javascript untuk Auto-Play & Navigation */}
             <script dangerouslySetInnerHTML={{__html: `
               (function() {
                 const slider = document.getElementById('${sliderId}');
@@ -224,7 +271,6 @@ export default createRoute(async (c) => {
                   resetTimer();
                 };
 
-                // Event Listener Panah Navigasi
                 if (prevBtn) {
                   prevBtn.addEventListener('click', () => {
                     const prevIndex = (currentIndex - 1 + totalSlides) % totalSlides;
@@ -239,7 +285,6 @@ export default createRoute(async (c) => {
                   });
                 }
 
-                // Event Listener Dot Navigasi
                 if (dotsContainer) {
                   const dots = dotsContainer.querySelectorAll('button');
                   dots.forEach((dot, index) => {
@@ -249,7 +294,6 @@ export default createRoute(async (c) => {
                   });
                 }
 
-                // Sinkronisasi manual swipe
                 slider.addEventListener('scroll', () => {
                   const scrollPosition = slider.scrollLeft;
                   const slideIndex = Math.round(scrollPosition / slider.clientWidth);
