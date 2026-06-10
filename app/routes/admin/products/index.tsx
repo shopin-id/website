@@ -77,7 +77,7 @@ export default createRoute(async (c) => {
         }
       `}} />
 
-      {/* FLOATING TOAST NOTIFICATION (CANTIK & PROFESIONAL) */}
+      {/* FLOATING TOAST NOTIFICATION */}
       {toast && (
         <div id="modern-toast" className="fixed top-6 right-6 z-[999] flex items-stretch bg-white shadow-2xl border border-gray-100 rounded-sm overflow-hidden animate-slideInRight w-80">
           <div className={`flex items-center justify-center w-12 text-white font-black text-xl ${toast.color}`}>
@@ -90,7 +90,6 @@ export default createRoute(async (c) => {
           <button onClick="closeToast()" className="absolute top-2 right-2 text-gray-400 hover:text-black transition-colors focus:outline-none">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
-          {/* Progress Bar Loading Toast */}
           <div className={`absolute bottom-0 left-0 h-1 ${toast.color} animate-[shrink_4s_linear_forwards]`} style={{ width: '100%' }}></div>
         </div>
       )}
@@ -163,7 +162,6 @@ export default createRoute(async (c) => {
                       {new Date(p.created_at).toLocaleDateString('id-ID', {day: '2-digit', month: '2-digit', year: 'numeric'})}
                     </td>
                     
-                    {/* TOMBOL AKSI MODERN MEMANGGIL MODAL */}
                     <td className="p-3 text-right whitespace-nowrap space-x-1.5 flex justify-end items-center">
                       <a 
                         href={`/admin/products/edit/${p.id}`} 
@@ -190,6 +188,7 @@ export default createRoute(async (c) => {
 
       {/* ==========================================
           MODAL DRAWER POP-UP KONFIRMASI HAPUS
+          (Sekarang pasti muncul di tengah!)
           ========================================== */}
       <div id="delete-modal" className="fixed inset-0 bg-black/60 z-[999] hidden items-center justify-center p-4 backdrop-blur-sm transition-opacity duration-300 opacity-0">
         <div id="delete-modal-box" className="bg-white w-full max-w-sm p-6 shadow-2xl rounded-sm border border-gray-100 transform scale-95 transition-transform duration-300">
@@ -236,7 +235,7 @@ export default createRoute(async (c) => {
           }
         };
 
-        // Logika Modal Hapus
+        // Logika Modal Hapus (Telah Diperbaiki untuk selalu di tengah)
         window.openDeleteModal = function(id, name) {
           document.getElementById('modal-product-id').value = id;
           document.getElementById('modal-product-name').innerText = name;
@@ -244,8 +243,10 @@ export default createRoute(async (c) => {
           const modal = document.getElementById('delete-modal');
           const box = document.getElementById('delete-modal-box');
           
+          // PERBAIKAN: Hapus hidden dan tambahkan flex agar properties justify-center & items-center bekerja
           modal.classList.remove('hidden');
-          // Trick to allow display:block to render before transitioning opacity
+          modal.classList.add('flex');
+          
           requestAnimationFrame(() => {
             modal.classList.remove('opacity-0');
             box.classList.remove('scale-95');
@@ -260,8 +261,10 @@ export default createRoute(async (c) => {
           box.classList.add('scale-95');
           
           setTimeout(() => {
+            // Kembalikan ke hidden dan hapus flex
             modal.classList.add('hidden');
-          }, 300); // Sesuai dengan durasi transisi
+            modal.classList.remove('flex');
+          }, 300);
         };
         
         // CSS animasi garis loading toast
