@@ -83,7 +83,6 @@ export default jsxRenderer(({ children, title }) => {
               </div>
               
               <a href="/products" className="hover:text-gray-300 transition-colors">Semua Produk</a>
-              <a href="/products?category=luxury" className="hover:text-gray-300 transition-colors">Luxury</a>
             </nav>
             
             {/* Bar Pencarian (Desktop) DENGAN LIVE AJAX DROPDOWN */}
