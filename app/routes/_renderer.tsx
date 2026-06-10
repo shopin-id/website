@@ -10,6 +10,12 @@ export default jsxRenderer(({ children, title }) => {
         
         {/* Tailwind CDN */}
         <script src="https://cdn.tailwindcss.com"></script>
+        <style dangerouslySetInnerHTML={{__html: `
+          .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+          .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+          .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        `}} />
       </head>
       {/* pb-24 pada mobile memastikan konten terbawah dapat di-scroll penuh tanpa tertutup sticky menu */}
       <body className="bg-[#f4f7fc] min-h-screen flex flex-col font-sans text-gray-800 pb-24 md:pb-0 relative antialiased">
@@ -47,12 +53,14 @@ export default jsxRenderer(({ children, title }) => {
               <a href="/products?category=accessories" className="hover:text-gray-300 transition-colors">Aksesoris</a>
             </nav>
             
-            {/* Bar Pencarian (Desktop) */}
-            <div className="flex-grow max-w-xl relative hidden md:block">
+            {/* Bar Pencarian (Desktop) DENGAN LIVE AJAX DROPDOWN */}
+            <div className="flex-grow max-w-xl relative hidden md:block group">
               <form action="/products" method="GET">
                 <input 
                   type="text" 
                   name="q"
+                  id="search-desktop"
+                  autoComplete="off"
                   placeholder="Saya Mencari..." 
                   className="w-full rounded-sm py-2 px-4 text-black text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
@@ -60,6 +68,10 @@ export default jsxRenderer(({ children, title }) => {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </button>
               </form>
+              {/* Dropdown Live Search Desktop */}
+              <div id="results-desktop" className="absolute top-full mt-1 left-0 w-full bg-white rounded-sm shadow-2xl border border-gray-200 z-[100] hidden max-h-96 overflow-y-auto custom-scrollbar text-black divide-y divide-gray-100">
+                {/* Hasil AJAX akan disuntikkan ke sini */}
+              </div>
             </div>
 
             {/* Ikon Aksi Kanan (Desktop) */}
@@ -75,12 +87,14 @@ export default jsxRenderer(({ children, title }) => {
             </div>
           </div>
 
-          {/* Bar Pencarian Mobile */}
-          <div className="md:hidden w-full px-4 pb-4">
+          {/* Bar Pencarian Mobile DENGAN LIVE AJAX DROPDOWN */}
+          <div className="md:hidden w-full px-4 pb-4 relative">
             <form action="/products" method="GET" className="relative">
               <input 
                 type="text" 
                 name="q"
+                id="search-mobile"
+                autoComplete="off"
                 placeholder="Cari produk impian..." 
                 className="w-full rounded-sm py-2.5 px-4 text-black text-sm focus:outline-none"
               />
@@ -88,6 +102,10 @@ export default jsxRenderer(({ children, title }) => {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
               </button>
             </form>
+            {/* Dropdown Live Search Mobile */}
+            <div id="results-mobile" className="absolute top-full mt-1 left-4 right-4 bg-white rounded-sm shadow-2xl border border-gray-200 z-[100] hidden max-h-80 overflow-y-auto custom-scrollbar text-black divide-y divide-gray-100">
+              {/* Hasil AJAX akan disuntikkan ke sini */}
+            </div>
           </div>
         </header>
 
@@ -161,6 +179,94 @@ export default jsxRenderer(({ children, title }) => {
             <span className="text-[10px] font-bold">Akun</span>
           </a>
         </div>
+
+        {/* === MESIN LIVE AJAX SEARCH === */}
+        <script dangerouslySetInnerHTML={{__html: `
+          function initLiveSearch(inputId, resultsId) {
+            const input = document.getElementById(inputId);
+            const resultsBox = document.getElementById(resultsId);
+            if (!input || !resultsBox) return;
+
+            let debounceTimer;
+
+            input.addEventListener('input', function(e) {
+              clearTimeout(debounceTimer);
+              const query = e.target.value.trim();
+
+              // Trigger minimal 3 digit
+              if (query.length < 3) {
+                resultsBox.classList.add('hidden');
+                resultsBox.innerHTML = '';
+                return;
+              }
+
+              // Loading state interaktif
+              resultsBox.classList.remove('hidden');
+              resultsBox.innerHTML = '<div class="p-4 text-xs font-bold text-center text-gray-400">Mencari...</div>';
+
+              debounceTimer = setTimeout(async () => {
+                try {
+                  // Pastikan Anda sudah membuat endpoint API '/api/search' di Cloudflare Workers/HonoX Anda
+                  // Endpoint tersebut harus mereturn JSON berupa array produk: [{slug, name, price, images_json}]
+                  const res = await fetch('/api/search?q=' + encodeURIComponent(query));
+                  if (!res.ok) throw new Error('API Error');
+                  
+                  const products = await res.json();
+
+                  if (products && products.length > 0) {
+                    let html = products.slice(0, 6).map(p => {
+                      let images = []; 
+                      try { images = JSON.parse(p.images_json || '[]') } catch(err){}
+                      const mainImage = images[0] || '/placeholder.jpg';
+                      const formattedPrice = new Intl.NumberFormat('id-ID').format(p.price || 0);
+                      
+                      return \`
+                        <a href="/products/\${p.slug}" class="flex items-center p-3 hover:bg-gray-50 transition-colors">
+                          <img src="\${mainImage}" class="w-10 h-10 object-cover rounded-sm border border-gray-100 flex-shrink-0" alt="\${p.name}">
+                          <div class="ml-3 flex-grow overflow-hidden">
+                            <h4 class="text-xs font-bold text-gray-900 truncate">\${p.name}</h4>
+                            <p class="text-[10px] font-bold text-red-600 mt-0.5">Rp \${formattedPrice}</p>
+                          </div>
+                        </a>
+                      \`;
+                    }).join('');
+                    
+                    // Tombol lihat semua hasil
+                    html += \`
+                      <a href="/products?q=\${encodeURIComponent(query)}" class="block text-center p-3 text-[11px] font-bold text-blue-600 bg-blue-50/50 hover:bg-blue-50 uppercase tracking-widest">
+                        Lihat Semua Hasil Pencarian 
+                      </a>
+                    \`;
+                    
+                    resultsBox.innerHTML = html;
+                  } else {
+                    resultsBox.innerHTML = '<div class="p-6 text-xs text-center text-gray-500 font-medium">Produk tidak ditemukan. Coba kata kunci lain.</div>';
+                  }
+                } catch (error) {
+                  resultsBox.innerHTML = '<div class="p-4 text-xs text-center text-red-500">Terjadi kesalahan. Silakan tekan Enter untuk mencari.</div>';
+                }
+              }, 400); // 400ms Debounce agar server D1 Anda tidak jebol
+            });
+
+            // Tutup dropdown jika user klik di luar area pencarian
+            document.addEventListener('click', function(e) {
+              if (!input.contains(e.target) && !resultsBox.contains(e.target)) {
+                resultsBox.classList.add('hidden');
+              }
+            });
+            
+            // Tampilkan kembali jika user klik input dan sudah ada isinya
+            input.addEventListener('focus', function(e) {
+              if (e.target.value.trim().length >= 3) {
+                resultsBox.classList.remove('hidden');
+              }
+            });
+          }
+
+          // Inisialisasi untuk Desktop dan Mobile
+          initLiveSearch('search-desktop', 'results-desktop');
+          initLiveSearch('search-mobile', 'results-mobile');
+        `}} />
 
       </body>
     </html>
