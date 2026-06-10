@@ -29,11 +29,9 @@ export default createRoute(async (c) => {
         
         {/* --- AREA GALERI GAMBAR --- */}
         <div className="space-y-4">
-          {/* Gambar Utama */}
           <div className="w-full aspect-[4/5] bg-gray-100 rounded-sm overflow-hidden border border-gray-200">
             <img id="main-product-image" src={images[0]} alt={product.name as string} className="w-full h-full object-cover" />
           </div>
-          {/* Thumbnail Galeri */}
           {images.length > 1 && (
             <div className="flex space-x-4 overflow-x-auto pb-2 scrollbar-hide">
               {images.map((img, idx) => (
@@ -64,13 +62,30 @@ export default createRoute(async (c) => {
 
           <div className="prose prose-sm text-gray-600 max-w-none mb-8" dangerouslySetInnerHTML={{ __html: product.description as string }} />
 
-          <form action="/checkout" method="GET" className="mt-auto">
-            {/* Sistem Checkout Sementara: Bawa ID via querystring/form */}
-            <input type="hidden" name="product_id" value={product.id as string} />
-            <button type="submit" disabled={product.stock === 0} className={`w-full py-4 rounded-sm font-bold uppercase tracking-widest text-sm shadow-md transition-colors ${product.stock === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-black text-white hover:bg-gray-800'}`}>
-              {product.stock === 0 ? 'Stok Habis' : 'Beli Sekarang (Via WhatsApp)'}
+          {/* PERBAIKAN: Tombol terintegrasi dengan fungsi add-to-cart di client.ts */}
+          <div className="mt-auto flex space-x-4">
+            <button 
+              type="button" 
+              disabled={product.stock === 0} 
+              className={`add-to-cart-btn flex-1 py-4 rounded-sm font-bold uppercase tracking-widest text-sm transition-colors border-2 ${product.stock === 0 ? 'border-gray-300 text-gray-500 bg-gray-100 cursor-not-allowed' : 'border-black text-black bg-white hover:bg-black hover:text-white'}`}
+              data-id={product.id}
+              data-name={product.name}
+              data-price={product.price}
+              data-image={images[0]}
+            >
+              {product.stock === 0 ? 'Stok Habis' : 'Tambah Keranjang'}
             </button>
-          </form>
+            
+            <button 
+              type="button" 
+              disabled={product.stock === 0} 
+              onClick="const btn = this.previousElementSibling; btn.click(); window.location.href='/cart';"
+              className={`flex-1 py-4 rounded-sm font-bold uppercase tracking-widest text-sm shadow-md transition-colors ${product.stock === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-black text-white hover:bg-gray-800'}`}
+            >
+              Beli Sekarang
+            </button>
+          </div>
+
         </div>
       </div>
     </div>
