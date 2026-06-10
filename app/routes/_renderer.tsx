@@ -36,7 +36,7 @@ export default jsxRenderer(({ children, title }) => {
 
         {/* === HEADER UTAMA & NAVIGASI === */}
         <header className="bg-black w-full text-white sticky top-0 z-50 shadow-md">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center justify-between">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row md:items-center justify-between">
             
             {/* Logo */}
             <div className="flex justify-between items-center w-full md:w-auto mb-4 md:mb-0">
@@ -45,12 +45,45 @@ export default jsxRenderer(({ children, title }) => {
               </a>
             </div>
 
-            {/* Menu Navigasi Kategori (Desktop) */}
-            <nav className="hidden md:flex items-center space-x-6 text-sm font-semibold mr-6 flex-shrink-0">
+            {/* Menu Navigasi Kategori (Desktop) DENGAN DROPDOWN SESUAI SCREENSHOT */}
+            <nav className="hidden md:flex items-center space-x-6 text-sm font-semibold mr-6 flex-shrink-0 h-full">
+              
+              {/* Dropdown Kategori Induk */}
+              <div className="relative group py-2">
+                <button className="flex items-center hover:text-gray-300 transition-colors focus:outline-none cursor-pointer pb-1">
+                  Kategori
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                
+                {/* Kotak Dropdown (Muncul saat Hover) */}
+                <div className="absolute top-[100%] left-0 w-72 bg-white text-gray-800 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[110] flex flex-col rounded-b-sm overflow-hidden">
+                  
+                  {/* Header Hitam Kategori | See All */}
+                  <div className="bg-black text-white px-5 py-3 flex justify-between items-center border-t border-gray-800">
+                    <span className="font-bold text-[15px]">Kategori</span>
+                    <a href="/categories" className="text-xs text-gray-300 hover:text-white transition-colors">See All &gt;</a>
+                  </div>
+                  
+                  {/* Daftar 10 Kategori Induk Ber-child (Sesuai Data HTML Anda) */}
+                  <ul className="py-2 flex flex-col text-[13px] font-normal">
+                    <li><a href="/products?category=snack-dessert" className="block px-5 py-2.5 hover:text-red-600 hover:bg-gray-50 transition-colors">Snack Dessert</a></li>
+                    <li><a href="/products?category=recreational-fishing-gear" className="block px-5 py-2.5 hover:text-red-600 hover:bg-gray-50 transition-colors">Recreational Fishing Gear</a></li>
+                    <li><a href="/products?category=phones-accessories" className="block px-5 py-2.5 hover:text-red-600 hover:bg-gray-50 transition-colors">Phones & Accessories</a></li>
+                    <li><a href="/products?category=epidemic-prevention-supplies" className="block px-5 py-2.5 hover:text-red-600 hover:bg-gray-50 transition-colors">Epidemic Prevention Supplies</a></li>
+                    <li><a href="/products?category=office-stationery" className="block px-5 py-2.5 hover:text-red-600 hover:bg-gray-50 transition-colors">Office Stationery</a></li>
+                    <li><a href="/products?category=computer-peripherals" className="block px-5 py-2.5 hover:text-red-600 hover:bg-gray-50 transition-colors">Computer Peripherals</a></li>
+                    <li><a href="/products?category=digital-products" className="block px-5 py-2.5 hover:text-red-600 hover:bg-gray-50 transition-colors">Digital Products</a></li>
+                    <li><a href="/products?category=sports-outdoors" className="block px-5 py-2.5 hover:text-red-600 hover:bg-gray-50 transition-colors">Sports & Outdoors</a></li>
+                    <li><a href="/products?category=home-appliances" className="block px-5 py-2.5 hover:text-red-600 hover:bg-gray-50 transition-colors">Home Appliances</a></li>
+                    <li><a href="/products?category=health-beauty-hair" className="block px-5 py-2.5 hover:text-red-600 hover:bg-gray-50 transition-colors">Health Beauty & Hair</a></li>
+                  </ul>
+                </div>
+              </div>
+              
               <a href="/products" className="hover:text-gray-300 transition-colors">Semua Produk</a>
-              <a href="/products?category=bags" className="hover:text-gray-300 transition-colors">Tas</a>
-              <a href="/products?category=shoes" className="hover:text-gray-300 transition-colors">Sepatu</a>
-              <a href="/products?category=accessories" className="hover:text-gray-300 transition-colors">Aksesoris</a>
+              <a href="/products?category=luxury" className="hover:text-gray-300 transition-colors">Luxury</a>
             </nav>
             
             {/* Bar Pencarian (Desktop) DENGAN LIVE AJAX DROPDOWN */}
@@ -206,8 +239,6 @@ export default jsxRenderer(({ children, title }) => {
 
               debounceTimer = setTimeout(async () => {
                 try {
-                  // Pastikan Anda sudah membuat endpoint API '/api/search' di Cloudflare Workers/HonoX Anda
-                  // Endpoint tersebut harus mereturn JSON berupa array produk: [{slug, name, price, images_json}]
                   const res = await fetch('/api/search?q=' + encodeURIComponent(query));
                   if (!res.ok) throw new Error('API Error');
                   
