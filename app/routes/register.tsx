@@ -105,7 +105,7 @@ export default createRoute(async (c) => {
         <form method="POST" action="/register" className="space-y-5">
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nama Lengkap</label>
-            <input type="text" name="name" required className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-black focus:border-black transition-colors" placeholder="Contoh: Budi Santoso" />
+            <input type="text" name="name" required className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-black focus:border-black transition-colors" placeholder="Contoh: Arman Maulana" />
           </div>
 
           {/* INPUT BARU: NOMOR WHATSAPP DENGAN DROPDOWN NEGARA */}
