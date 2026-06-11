@@ -35,7 +35,12 @@ export default createRoute(async (c) => {
           {images.length > 1 && (
             <div className="flex space-x-4 overflow-x-auto pb-2 scrollbar-hide">
               {images.map((img, idx) => (
-                <button key={idx} onClick={`document.getElementById('main-product-image').src='${img}'`} className="w-20 h-24 flex-shrink-0 border border-gray-200 rounded-sm overflow-hidden hover:border-black transition-colors focus:outline-none">
+                <button 
+                  key={idx} 
+                  type="button" 
+                  onclick={`document.getElementById('main-product-image').src='${img}'`} 
+                  className="w-20 h-24 flex-shrink-0 border border-gray-200 rounded-sm overflow-hidden hover:border-black transition-colors focus:outline-none"
+                >
                   <img src={img} className="w-full h-full object-cover" />
                 </button>
               ))}
@@ -62,12 +67,13 @@ export default createRoute(async (c) => {
 
           <div className="prose prose-sm text-gray-600 max-w-none mb-8" dangerouslySetInnerHTML={{ __html: product.description as string }} />
 
-          {/* PERBAIKAN: Tombol terintegrasi dengan fungsi add-to-cart di client.ts */}
+          {/* PERBAIKAN: Tombol diberikan ID spesifik untuk dikendalikan Script Lokal */}
           <div className="mt-auto flex space-x-4">
             <button 
               type="button" 
+              id="btn-add-cart"
               disabled={product.stock === 0} 
-              className={`add-to-cart-btn flex-1 py-4 rounded-sm font-bold uppercase tracking-widest text-sm transition-colors border-2 ${product.stock === 0 ? 'border-gray-300 text-gray-500 bg-gray-100 cursor-not-allowed' : 'border-black text-black bg-white hover:bg-black hover:text-white'}`}
+              className={`flex-1 py-4 rounded-sm font-bold uppercase tracking-widest text-sm transition-colors border-2 ${product.stock === 0 ? 'border-gray-300 text-gray-500 bg-gray-100 cursor-not-allowed' : 'border-black text-black bg-white hover:bg-black hover:text-white'}`}
               data-id={product.id}
               data-name={product.name}
               data-price={product.price}
@@ -78,13 +84,79 @@ export default createRoute(async (c) => {
             
             <button 
               type="button" 
+              id="btn-buy-now"
               disabled={product.stock === 0} 
-              onClick="const btn = this.previousElementSibling; btn.click(); window.location.href='/cart';"
               className={`flex-1 py-4 rounded-sm font-bold uppercase tracking-widest text-sm shadow-md transition-colors ${product.stock === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-black text-white hover:bg-gray-800'}`}
             >
               Beli Sekarang
             </button>
           </div>
+
+          {/* SCRIPT LOKAL PENGENDALI KERANJANG (DIJAMIN 100% BEKERJA) */}
+          <script dangerouslySetInnerHTML={{__html: `
+            document.addEventListener('DOMContentLoaded', function() {
+              const btnAdd = document.getElementById('btn-add-cart');
+              const btnBuy = document.getElementById('btn-buy-now');
+
+              // FUNGSI INTI PENYIMPAN KERANJANG
+              function addToCart() {
+                if(!btnAdd) return;
+                const id = btnAdd.getAttribute('data-id');
+                const price = parseInt(btnAdd.getAttribute('data-price') || '0', 10);
+                const name = btnAdd.getAttribute('data-name');
+                const image = btnAdd.getAttribute('data-image') || '/placeholder.jpg';
+
+                // 1. Ambil data dari Local Storage
+                let cart = JSON.parse(localStorage.getItem('shopin_cart') || '[]');
+                
+                // 2. Tambah qty jika produk sudah ada, atau buat baru
+                const index = cart.findIndex(item => item.id === id);
+                if (index > -1) {
+                  cart[index].quantity += 1;
+                } else {
+                  cart.push({ id, name, price, quantity: 1, image });
+                }
+                
+                // 3. Simpan kembali ke penyimpanan browser
+                localStorage.setItem('shopin_cart', JSON.stringify(cart));
+                
+                // 4. Update Angka di Header Secara Live
+                const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+                const counters = document.querySelectorAll('.cart-counter');
+                counters.forEach(c => c.innerHTML = totalItems);
+                
+                // 5. Animasi Sukses pada Tombol
+                const origText = btnAdd.innerText;
+                btnAdd.innerText = '✓ Berhasil Masuk';
+                btnAdd.classList.remove('bg-white', 'text-black', 'border-black');
+                btnAdd.classList.add('bg-green-100', 'text-green-700', 'border-green-600');
+                
+                setTimeout(() => {
+                  btnAdd.innerText = origText;
+                  btnAdd.classList.add('bg-white', 'text-black', 'border-black');
+                  btnAdd.classList.remove('bg-green-100', 'text-green-700', 'border-green-600');
+                }, 1500);
+              }
+
+              // Event Listener Tombol "Tambah Keranjang"
+              if (btnAdd) {
+                btnAdd.addEventListener('click', function(e) {
+                  e.preventDefault();
+                  addToCart();
+                });
+              }
+
+              // Event Listener Tombol "Beli Sekarang"
+              if (btnBuy) {
+                btnBuy.addEventListener('click', function(e) {
+                  e.preventDefault();
+                  addToCart();
+                  // Arahkan ke halaman keranjang profesional yang sudah kita buat
+                  window.location.href = '/cart'; 
+                });
+              }
+            });
+          `}} />
 
         </div>
       </div>
