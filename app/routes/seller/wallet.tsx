@@ -41,13 +41,11 @@ export const POST = createRoute(async (c) => {
     const amount = parseInt(amountStr, 10)
 
     try {
-      // 1. Validasi User dan memastikan Data Bank tidak kosong
       const user = await db.prepare("SELECT bank_name, bank_account_number FROM users WHERE id = ?").bind(userAuth.id).first()
       if (!user || !user.bank_account_number) {
         return c.redirect('/seller/wallet?err=no_bank')
       }
 
-      // 2. Validasi Toko & Ketersediaan Saldo
       const store = await db.prepare("SELECT id FROM stores WHERE user_id = ?").bind(userAuth.id).first()
       if (!store) return c.redirect('/seller/wallet?err=1')
 
@@ -56,7 +54,6 @@ export const POST = createRoute(async (c) => {
          return c.redirect('/seller/wallet?err=insufficient')
       }
 
-      // 3. Eksekusi Penarikan (Potong Saldo & Catat Histori Transaksi)
       const trxId = 'TRX-' + generateId().substring(0, 8).toUpperCase()
       const desc = `Penarikan ke ${user.bank_name} - ${user.bank_account_number}`
 
@@ -84,17 +81,13 @@ export default createRoute(async (c) => {
   const userAuth = await getAuthUser(c)
   if (!userAuth) return c.redirect('/login')
 
-  // Ambil data User untuk info Bank
   const user = await db.prepare("SELECT bank_name, bank_account_number, bank_account_name FROM users WHERE id = ?").bind(userAuth.id).first()
   
-  // Ambil data Store untuk mencari Wallet
   const store = await db.prepare("SELECT id FROM stores WHERE user_id = ?").bind(userAuth.id).first()
   if (!store) return c.redirect('/seller/register')
 
-  // Ambil Saldo dari Wallet
   const wallet = await db.prepare("SELECT pending_balance, available_balance FROM vendor_wallets WHERE store_id = ?").bind(store.id).first()
   
-  // Ambil Daftar Bank
   let banks: any[] = []
   try {
     const { results } = await db.prepare("SELECT bank_name, transfer_code FROM bank_transfers WHERE is_active = 1 ORDER BY bank_name ASC").all()
@@ -104,12 +97,13 @@ export default createRoute(async (c) => {
   const pending = wallet ? (wallet.pending_balance as number) : 0;
   const available = wallet ? (wallet.available_balance as number) : 0;
   
-  // Tangkap Pesan Status
   const success = c.req.query('success')
   const err = c.req.query('err')
 
   return c.render(
-    <div className="w-full bg-[#f4f7fc] min-h-screen py-10 px-4">
+    <div className="w-full bg-[#f4f7fc] min-h-screen py-10 px-4 relative">
+      
+      {/* KONTEM UTAMA */}
       <div className="max-w-6xl mx-auto space-y-8">
         
         {/* HEADER DOMPET */}
@@ -123,23 +117,27 @@ export default createRoute(async (c) => {
 
         {/* NOTIFIKASI STATUS */}
         {success === 'bank_updated' && (
-          <div className="bg-green-50 border border-green-200 p-4 rounded-sm shadow-sm">
-            <p className="text-sm text-green-700 font-bold">✓ Informasi Rekening Bank berhasil diperbarui!</p>
+          <div className="bg-green-50 border border-green-200 p-4 rounded-sm shadow-sm flex items-center">
+            <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            <p className="text-sm text-green-700 font-bold">Informasi Rekening Bank berhasil diperbarui!</p>
           </div>
         )}
         {success === 'withdraw_ok' && (
-          <div className="bg-green-50 border border-green-200 p-4 rounded-sm shadow-sm">
-            <p className="text-sm text-green-700 font-bold">✓ Permintaan penarikan dana berhasil diproses! Saldo Anda telah dipotong.</p>
+          <div className="bg-green-50 border border-green-200 p-4 rounded-sm shadow-sm flex items-center">
+            <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            <p className="text-sm text-green-700 font-bold">Permintaan penarikan dana berhasil diproses! Saldo Anda telah dipotong.</p>
           </div>
         )}
         {err === 'no_bank' && (
-          <div className="bg-red-50 border border-red-200 p-4 rounded-sm shadow-sm">
-            <p className="text-sm text-red-700 font-bold">⚠ Gagal: Mohon isi dan simpan data Rekening Pencairan Anda terlebih dahulu di bawah!</p>
+          <div className="bg-red-50 border border-red-200 p-4 rounded-sm shadow-sm flex items-center">
+            <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <p className="text-sm text-red-700 font-bold">Gagal: Mohon lengkapi Data Rekening Pencairan Anda di bawah!</p>
           </div>
         )}
         {err === 'insufficient' && (
-          <div className="bg-red-50 border border-red-200 p-4 rounded-sm shadow-sm">
-            <p className="text-sm text-red-700 font-bold">⚠ Gagal: Saldo tidak mencukupi atau nominal penarikan tidak valid.</p>
+          <div className="bg-red-50 border border-red-200 p-4 rounded-sm shadow-sm flex items-center">
+            <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <p className="text-sm text-red-700 font-bold">Gagal: Saldo tidak mencukupi atau nominal penarikan tidak valid.</p>
           </div>
         )}
 
@@ -150,14 +148,14 @@ export default createRoute(async (c) => {
                 <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Saldo Bisa Ditarik</p>
                 <h2 className="text-4xl font-black mb-6">Rp {available.toLocaleString('id-ID')}</h2>
                 
-                {/* PERBAIKAN: TOMBOL TARIK DANA SEKARANG HIDUP & BERFUNGSI */}
-                <form method="POST" action="/seller/wallet" onSubmit={`return window.confirmWithdrawal(this, ${available})`}>
-                  {/* Indikator agar Backend tahu ini aksi Penarikan */}
+                {/* TOMBOL PEMICU CUSTOM MODAL */}
+                <form id="withdraw-form" method="POST" action="/seller/wallet">
                   <input type="hidden" name="action_type" value="withdraw" /> 
                   <input type="hidden" name="amount" id="withdraw_amount" value="" />
                   <button 
-                    type="submit"
+                    type="button"
                     disabled={available <= 0}
+                    onClick={`openWithdrawModal(${available})`}
                     className={`px-6 py-2.5 rounded-sm font-bold text-sm uppercase tracking-wide transition-colors ${available > 0 ? 'bg-white text-black hover:bg-gray-100 shadow-sm' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
                   >
                      Tarik Dana
@@ -185,17 +183,13 @@ export default createRoute(async (c) => {
           </div>
 
           <form action="/seller/wallet" method="POST" className="p-6 md:p-8 space-y-6">
-            {/* Indikator agar Backend tahu ini aksi Penyimpanan Bank */}
             <input type="hidden" name="action_type" value="update_bank" />
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              {/* KOMPONEN PENCARIAN BANK CERDAS */}
               <div className="relative">
                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Pilih / Cari Nama Bank</label>
-                 
                  <input type="hidden" name="bank_name" id="hidden-bank-name" value={user?.bank_name as string || ''} />
-                 
                  <input 
                    type="text" 
                    id="bank-search-input" 
@@ -205,7 +199,6 @@ export default createRoute(async (c) => {
                    autoComplete="off" 
                    required
                  />
-                 
                  <ul id="bank-list" className="absolute z-20 w-full bg-white border border-gray-200 mt-1 max-h-48 overflow-y-auto hidden shadow-xl rounded-sm">
                    {banks.map((bank: any, idx: number) => (
                      <li 
@@ -219,10 +212,7 @@ export default createRoute(async (c) => {
                        <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-sm font-mono tracking-widest">{bank.transfer_code}</span>
                      </li>
                    ))}
-                   
-                   {banks.length === 0 && (
-                     <li className="px-3 py-3 text-sm text-gray-400 text-center">Data bank belum tersedia.</li>
-                   )}
+                   {banks.length === 0 && <li className="px-3 py-3 text-sm text-gray-400 text-center">Data bank belum tersedia.</li>}
                    <li id="bank-not-found" className="px-3 py-3 text-sm text-gray-400 text-center hidden">Bank tidak ditemukan.</li>
                  </ul>
               </div>
@@ -264,8 +254,120 @@ export default createRoute(async (c) => {
 
       </div>
 
-      {/* SCRIPT LOGIKA PENCARIAN BANK & PENARIKAN DANA */}
+      {/* CONTAINER UNTUK TOAST NOTIFICATION KUSTOM */}
+      <div id="toast-container" className="fixed top-5 right-5 z-[10000] flex flex-col gap-3"></div>
+
+      {/* MODAL PENARIKAN (MENGGANTIKAN PROMPT/ALERT/CONFIRM BAWAAN JS) */}
+      <div id="withdraw-modal" className="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity opacity-0 duration-300">
+        <div className="bg-white rounded-sm shadow-2xl p-6 w-11/12 max-w-md transform scale-95 transition-transform duration-300" id="withdraw-modal-content">
+           <h3 className="text-xl font-black text-gray-900 mb-2 uppercase tracking-tight">Penarikan Dana</h3>
+           <p className="text-sm text-gray-500 mb-4">Masukkan nominal penarikan. Saldo maksimal Anda adalah <strong id="modal-max-amount" className="text-black"></strong>.</p>
+           
+           <div className="relative mb-6">
+             <span className="absolute left-4 top-3.5 text-gray-500 font-bold">Rp</span>
+             {/* Input angka otomatis terformat separator ribuan */}
+             <input type="text" id="modal-input-amount" className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-sm focus:ring-black focus:border-black font-black text-xl text-gray-900" placeholder="0" />
+           </div>
+
+           <div className="flex space-x-3">
+             <button type="button" onClick="closeWithdrawModal()" className="flex-1 py-3.5 bg-gray-100 text-gray-700 font-bold rounded-sm hover:bg-gray-200 transition-colors text-xs uppercase tracking-wider">Batal</button>
+             <button type="button" onClick="submitWithdrawal()" className="flex-1 py-3.5 bg-red-600 text-white font-bold rounded-sm hover:bg-red-700 transition-colors text-xs uppercase tracking-wider shadow-md">Konfirmasi Tarik</button>
+           </div>
+        </div>
+      </div>
+
+      {/* SCRIPT LOGIKA PENCARIAN BANK & MODAL KUSTOM */}
       <script dangerouslySetInnerHTML={{__html: `
+        // === LOGIKA TOAST NOTIFICATION KUSTOM ===
+        window.showToast = function(message, type = 'error') {
+          const container = document.getElementById('toast-container');
+          const toast = document.createElement('div');
+          const isError = type === 'error';
+          
+          toast.className = 'flex items-center p-4 rounded-sm shadow-xl text-sm font-bold transform transition-all duration-300 translate-x-full opacity-0 ' + (isError ? 'bg-red-50 text-red-700 border-l-4 border-red-600' : 'bg-green-50 text-green-700 border-l-4 border-green-600');
+          
+          toast.innerHTML = '<span class="mr-2 text-lg">' + (isError ? '⚠' : '✓') + '</span><span>' + message + '</span>';
+          container.appendChild(toast);
+          
+          // Animasikan masuk
+          requestAnimationFrame(() => {
+            toast.classList.remove('translate-x-full', 'opacity-0');
+          });
+          
+          // Hilangkan otomatis setelah 3 detik
+          setTimeout(() => {
+            toast.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+          }, 3000);
+        };
+
+        // === LOGIKA CUSTOM MODAL PENARIKAN ===
+        let maxWithdrawAmount = 0;
+
+        window.openWithdrawModal = function(maxAmount) {
+          const bankNum = document.getElementById('form_bank_number');
+          // Jika nomor rekening kosong, tolak dan munculkan toast error
+          if (!bankNum || !bankNum.value.trim()) {
+              showToast('Mohon lengkapi dan simpan Data Rekening Bank Anda terlebih dahulu di bawah!', 'error');
+              return;
+          }
+          
+          maxWithdrawAmount = maxAmount;
+          document.getElementById('modal-max-amount').innerText = 'Rp ' + new Intl.NumberFormat('id-ID').format(maxAmount);
+          document.getElementById('modal-input-amount').value = '';
+          
+          const modal = document.getElementById('withdraw-modal');
+          const content = document.getElementById('withdraw-modal-content');
+          
+          modal.classList.remove('hidden');
+          // Trigger reflow untuk animasi
+          void modal.offsetWidth;
+          modal.classList.remove('opacity-0');
+          content.classList.remove('scale-95');
+        };
+
+        window.closeWithdrawModal = function() {
+          const modal = document.getElementById('withdraw-modal');
+          const content = document.getElementById('withdraw-modal-content');
+          
+          modal.classList.add('opacity-0');
+          content.classList.add('scale-95');
+          setTimeout(() => {
+            modal.classList.add('hidden');
+          }, 300);
+        };
+
+        // Format angka menjadi mata uang saat mengetik di dalam Modal
+        const amountInput = document.getElementById('modal-input-amount');
+        if(amountInput) {
+           amountInput.addEventListener('input', function(e) {
+              let value = e.target.value.replace(/\\D/g, '');
+              if(value) {
+                 e.target.value = new Intl.NumberFormat('id-ID').format(parseInt(value, 10));
+              } else {
+                 e.target.value = '';
+              }
+           });
+        }
+
+        window.submitWithdrawal = function() {
+          const inputVal = document.getElementById('modal-input-amount').value.replace(/\\D/g, '');
+          const amount = parseInt(inputVal, 10);
+          
+          if (isNaN(amount) || amount <= 0) {
+              showToast('Nominal yang Anda masukkan tidak valid.', 'error');
+              return;
+          }
+          if (amount > maxWithdrawAmount) {
+              showToast('Nominal penarikan melebihi saldo yang tersedia!', 'error');
+              return;
+          }
+
+          // Lolos validasi, masukkan nilai ke form hidden dan submit!
+          document.getElementById('withdraw_amount').value = amount;
+          document.getElementById('withdraw-form').submit();
+        };
+
         // === LOGIKA DROPDOWN BANK ===
         const searchInput = document.getElementById('bank-search-input');
         const hiddenInput = document.getElementById('hidden-bank-name');
@@ -274,24 +376,15 @@ export default createRoute(async (c) => {
         const notFound = document.getElementById('bank-not-found');
 
         if(searchInput) {
-          searchInput.addEventListener('focus', () => {
-            bankList.classList.remove('hidden');
-          });
-
-          searchInput.addEventListener('blur', () => {
-            setTimeout(() => bankList.classList.add('hidden'), 200);
-          });
-
+          searchInput.addEventListener('focus', () => { bankList.classList.remove('hidden'); });
+          searchInput.addEventListener('blur', () => { setTimeout(() => bankList.classList.add('hidden'), 200); });
           searchInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
             let count = 0;
-            
             hiddenInput.value = e.target.value; 
-
             bankItems.forEach(item => {
               const name = item.getAttribute('data-name').toLowerCase();
               const code = item.getAttribute('data-code') ? item.getAttribute('data-code').toLowerCase() : '';
-              
               if (name.includes(val) || code.includes(val)) {
                 item.style.display = 'flex';
                 count++;
@@ -299,57 +392,14 @@ export default createRoute(async (c) => {
                 item.style.display = 'none';
               }
             });
-
-            if (count === 0) {
-              if(notFound) notFound.style.display = 'block';
-            } else {
-              if(notFound) notFound.style.display = 'none';
-            }
+            if(notFound) notFound.style.display = count === 0 ? 'block' : 'none';
           });
-
           window.selectBank = function(bankName) {
             searchInput.value = bankName;
             hiddenInput.value = bankName;
             bankList.classList.add('hidden');
           };
         }
-
-        // === LOGIKA POPUP TARIK DANA ===
-        window.confirmWithdrawal = function(form, maxAmount) {
-          if (maxAmount <= 0) return false;
-          
-          // Cek keamanan: pastikan rekening sudah diisi
-          const bankNum = document.getElementById('form_bank_number');
-          if (!bankNum || !bankNum.value.trim()) {
-              alert('PENTING: Mohon lengkapi dan simpan Data Rekening Bank Anda terlebih dahulu di formulir bawah!');
-              return false;
-          }
-
-          // Munculkan popup nominal
-          const input = prompt('Masukkan nominal dana yang ingin ditarik (Maksimal: Rp ' + new Intl.NumberFormat('id-ID').format(maxAmount) + '):\\n\\nPastikan rekening bank Anda sudah benar!', maxAmount);
-          
-          if (!input) return false; // Batal ditarik
-
-          // Bersihkan angka dari titik/koma
-          const amount = parseInt(input.replace(/\\D/g, ''), 10);
-          
-          if (isNaN(amount) || amount <= 0) {
-              alert('GAGAL: Nominal yang dimasukkan tidak valid.');
-              return false;
-          }
-          if (amount > maxAmount) {
-              alert('GAGAL: Nominal penarikan (' + amount + ') melebihi saldo yang tersedia (' + maxAmount + ')!');
-              return false;
-          }
-
-          // Konfirmasi akhir
-          const konfirmasi = confirm('Anda akan menarik dana sebesar Rp ' + new Intl.NumberFormat('id-ID').format(amount) + '. Proses ini tidak dapat dibatalkan. Lanjutkan?');
-          if (!konfirmasi) return false;
-
-          // Suntikkan angka ke input form tersembunyi
-          document.getElementById('withdraw_amount').value = amount;
-          return true;
-        };
       `}} />
 
     </div>
