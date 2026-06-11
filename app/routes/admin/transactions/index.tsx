@@ -1,5 +1,5 @@
 import { createRoute } from 'honox/factory'
-import { getAuthUser } from '../../../../utils/auth'
+import { getAuthUser } from '../../../utils/auth' // PERBAIKAN: Mundur 3 folder, bukan 4!
 
 export const POST = createRoute(async (c) => {
   const db = c.env.DB
@@ -48,7 +48,7 @@ export default createRoute(async (c) => {
   try { await db.prepare("ALTER TABLE wallet_transactions ADD COLUMN status TEXT DEFAULT 'approved'").run() } catch(e) {}
   try { await db.prepare("ALTER TABLE wallet_transactions ADD COLUMN notes TEXT").run() } catch(e) {}
 
-  // PERBAIKAN: Tarik data t.notes DAN data rekening bank milik penjual
+  // Tarik data t.notes DAN data rekening bank milik penjual
   const { results: txs } = await db.prepare(`
     SELECT t.id as tx_id, t.type, t.amount, t.description, t.status, t.created_at, t.notes,
            u.name as member_name, u.phone as member_phone, 
