@@ -58,10 +58,13 @@ export const POST = createRoute(async (c) => {
       const desc = `Penarikan ke ${user.bank_name} - ${user.bank_account_number}`
 
       await db.batch([
+        // 1. Potong saldo yang bisa ditarik agar tidak bisa ditarik ganda (Double Spend)
         db.prepare("UPDATE vendor_wallets SET available_balance = available_balance - ? WHERE id = ?").bind(amount, wallet.id),
+        
+        // 2. Masukkan ke riwayat transaksi dengan status eksplisit 'pending'
         db.prepare(`
-          INSERT INTO wallet_transactions (id, wallet_id, type, amount, description)
-          VALUES (?, ?, 'withdrawal', ?, ?)
+          INSERT INTO wallet_transactions (id, wallet_id, type, amount, description, status)
+          VALUES (?, ?, 'withdrawal', ?, ?, 'pending')
         `).bind(trxId, wallet.id, amount, desc)
       ])
 
