@@ -1,12 +1,12 @@
 import { createRoute } from 'honox/factory'
 import { generateId } from '../../../utils/admin_utils'
 
+// === MESIN PEMROSES AKUNTANSI ADMIN ===
 export const POST = createRoute(async (c) => {
   const db = c.env.DB
   const formData = await c.req.formData()
   const walletId = formData.get('wallet_id') as string
   
-  // Tangkap nilai Debet dan Kredit (Pasti positif karena di HTML kita set min="0")
   const debetStr = formData.get('debet') as string
   const kreditStr = formData.get('kredit') as string
   const notes = formData.get('notes') as string || 'Penyesuaian saldo manual oleh Admin'
@@ -49,6 +49,7 @@ export const POST = createRoute(async (c) => {
   }
 })
 
+// === ANTARMUKA ADMIN FINANSIAL ===
 export default createRoute(async (c) => {
   const db = c.env.DB
   const success = c.req.query('success')
@@ -62,25 +63,14 @@ export default createRoute(async (c) => {
   `).all()
 
   return c.render(
-    <div className="bg-white p-6 md:p-8 rounded-sm shadow-sm border border-gray-200">
+    <div className="bg-white p-6 md:p-8 rounded-sm shadow-sm border border-gray-200 relative min-h-screen">
       <h2 className="text-xl font-bold text-gray-900 mb-1 uppercase tracking-tight">Keuangan & Saldo Vendor</h2>
       <p className="text-sm text-gray-500 mb-6">Kelola dan sesuaikan (Debet/Kredit) saldo vendor secara manual.</p>
 
-      {success === 'injected' && (
-        <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-sm mb-6 shadow-sm flex items-center">
-          <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-          <p className="text-sm text-green-700 font-bold">Saldo dompet vendor berhasil disesuaikan dan tercatat di riwayat transaksi!</p>
-        </div>
-      )}
+      {/* CONTAINER UNTUK TOAST NOTIFICATION KUSTOM */}
+      <div id="toast-container" className="fixed top-5 right-5 z-[10000] flex flex-col gap-3"></div>
 
-      {err === 'zero' && (
-        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-sm mb-6 shadow-sm flex items-center">
-          <svg className="w-5 h-5 text-amber-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-          <p className="text-sm text-amber-700 font-bold">Gagal: Anda harus mengisi salah satu kolom Debet atau Kredit dengan angka lebih dari 0.</p>
-        </div>
-      )}
-
-      <div className="overflow-x-auto custom-scrollbar">
+      <div className="overflow-x-auto custom-scrollbar mt-4">
         <table className="w-full text-left border-collapse min-w-[700px]">
           <thead>
             <tr className="bg-gray-800 border-y border-gray-700 text-[10px] uppercase tracking-wider text-gray-200">
@@ -105,8 +95,8 @@ export default createRoute(async (c) => {
                 </td>
                 
                 <td className="p-4">
-                  {/* FORM PENYESUAIAN AKUNTANSI */}
-                  <form action="/admin/finance" method="POST" className="flex flex-col space-y-2 w-full max-w-sm ml-auto bg-gray-50/50 p-3 rounded-sm border border-gray-200">
+                  {/* FORM PENYESUAIAN AKUNTANSI (DIBERI ID UNTUK DIAKSES JAVASCRIPT MODAL) */}
+                  <form id={`adjust-form-${w.id}`} action="/admin/finance" method="POST" className="flex flex-col space-y-2 w-full max-w-sm ml-auto bg-gray-50/50 p-3 rounded-sm border border-gray-200">
                     <input type="hidden" name="wallet_id" value={w.id} />
                     
                     <div className="flex space-x-3">
@@ -146,10 +136,11 @@ export default createRoute(async (c) => {
                       />
                     </div>
                     
+                    {/* PERBAIKAN: BUTTON TYPE BUTTON & TRIGERS CUSTOM MODAL */}
                     <button 
-                      type="submit" 
+                      type="button" 
                       className="w-full bg-black text-white px-3 py-2.5 rounded-sm text-[10px] font-bold uppercase tracking-widest hover:bg-gray-800 transition-colors shadow-sm" 
-                      onclick="return confirm('PERINGATAN! Anda akan mengubah saldo dan mutasi ini akan tercatat selamanya di riwayat penjual. Lanjutkan?')"
+                      onclick={`window.openConfirmModal('adjust-form-${w.id}')`}
                     >
                       Eksekusi Penyesuaian
                     </button>
@@ -160,6 +151,103 @@ export default createRoute(async (c) => {
           </tbody>
         </table>
       </div>
+
+      {/* MODAL KONFIRMASI CUSTOM (PENGGANTI CONFIRM BAWAAN JS) */}
+      <div id="confirm-modal" className="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity opacity-0 duration-300 px-4">
+        <div className="bg-white rounded-sm shadow-2xl p-6 w-full max-w-md transform scale-95 transition-transform duration-300" id="confirm-modal-content">
+           <div className="flex items-center space-x-3 mb-4">
+             <div className="bg-red-100 text-red-600 p-2 rounded-full">
+               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+             </div>
+             <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Peringatan Tindakan</h3>
+           </div>
+           
+           <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+             Anda akan mengubah saldo dompet vendor ini. Mutasi finansial ini akan <strong>tercatat secara permanen</strong> di riwayat transaksi penjual. Yakin ingin melanjutkan?
+           </p>
+           
+           <div className="flex space-x-3">
+             <button type="button" onclick="window.closeConfirmModal()" className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-sm hover:bg-gray-200 transition-colors text-xs uppercase tracking-wider">Batalkan</button>
+             <button type="button" id="btn-execute" className="flex-1 py-3 bg-red-600 text-white font-bold rounded-sm hover:bg-red-700 transition-colors text-xs uppercase tracking-wider shadow-md">Ya, Lanjutkan</button>
+           </div>
+        </div>
+      </div>
+
+      {/* SCRIPT UX LOGIC: TOAST & MODAL */}
+      <script dangerouslySetInnerHTML={{__html: `
+        // === LOGIKA TOAST NOTIFICATION ===
+        window.showToast = function(message, type = 'error') {
+          const container = document.getElementById('toast-container');
+          const toast = document.createElement('div');
+          const isError = type === 'error';
+          toast.className = 'flex items-center p-4 rounded-sm shadow-xl text-sm font-bold transform transition-all duration-300 translate-x-full opacity-0 ' + (isError ? 'bg-red-50 text-red-700 border-l-4 border-red-600' : 'bg-green-50 text-green-700 border-l-4 border-green-600');
+          toast.innerHTML = '<span class="mr-2 text-lg">' + (isError ? '⚠' : '✓') + '</span><span>' + message + '</span>';
+          container.appendChild(toast);
+          
+          requestAnimationFrame(() => toast.classList.remove('translate-x-full', 'opacity-0'));
+          setTimeout(() => {
+            toast.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+          }, 4000);
+        };
+
+        // Render otomatis Toast saat halaman dimuat jika ada trigger URL
+        ${success === 'injected' ? "window.showToast('Saldo dompet vendor berhasil disesuaikan dan tercatat di riwayat!', 'success');" : ""}
+        ${err === 'zero' ? "window.showToast('Gagal: Anda harus mengisi nilai Debet atau Kredit!', 'error');" : ""}
+
+        // === LOGIKA CUSTOM MODAL ===
+        let currentFormToSubmit = null;
+
+        window.openConfirmModal = function(formId) {
+          const form = document.getElementById(formId);
+          if(!form) return;
+          
+          // Validasi sederhana: Pastikan ada angka di debet atau kredit
+          const debet = form.querySelector('input[name="debet"]').value;
+          const kredit = form.querySelector('input[name="kredit"]').value;
+          
+          if (!debet && !kredit) {
+             window.showToast('Silakan isi kolom Debet atau Kredit terlebih dahulu.', 'error');
+             return;
+          }
+
+          // Validasi Notes
+          const notes = form.querySelector('input[name="notes"]').value;
+          if (!notes.trim()) {
+             window.showToast('Catatan mutasi harus diisi!', 'error');
+             return;
+          }
+
+          currentFormToSubmit = form;
+          
+          const modal = document.getElementById('confirm-modal');
+          const content = document.getElementById('confirm-modal-content');
+          
+          modal.classList.remove('hidden');
+          void modal.offsetWidth; // force reflow
+          modal.classList.remove('opacity-0');
+          content.classList.remove('scale-95');
+        };
+
+        window.closeConfirmModal = function() {
+          const modal = document.getElementById('confirm-modal');
+          const content = document.getElementById('confirm-modal-content');
+          
+          modal.classList.add('opacity-0');
+          content.classList.add('scale-95');
+          setTimeout(() => {
+            modal.classList.add('hidden');
+            currentFormToSubmit = null;
+          }, 300);
+        };
+
+        // Eksekusi Submit Saat Tombol "Ya, Lanjutkan" ditekan
+        document.getElementById('btn-execute').addEventListener('click', function() {
+           if (currentFormToSubmit) {
+              currentFormToSubmit.submit();
+           }
+        });
+      `}} />
     </div>,
     { title: 'Keuangan Vendor | Admin' }
   )
