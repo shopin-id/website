@@ -103,7 +103,7 @@ export default createRoute(async (c) => {
   return c.render(
     <div className="w-full bg-[#f4f7fc] min-h-screen py-10 px-4 relative">
       
-      {/* KONTEM UTAMA */}
+      {/* KONTEN UTAMA */}
       <div className="max-w-6xl mx-auto space-y-8">
         
         {/* HEADER DOMPET */}
@@ -199,6 +199,11 @@ export default createRoute(async (c) => {
                    autoComplete="off" 
                    required
                  />
+                 
+                 {/* PERBAIKAN SANGAT KRUSIAL: 
+                   Atribut onclick DIHAPUS TOTAL agar karakter aneh pada string nama bank tidak merusak struktur HTML.
+                   Klik akan di-handle murni oleh EventListener JavaScript di bawah.
+                 */}
                  <ul id="bank-list" className="absolute z-20 w-full bg-white border border-gray-200 mt-1 max-h-48 overflow-y-auto hidden shadow-xl rounded-sm">
                    {banks.map((bank: any, idx: number) => (
                      <li 
@@ -206,7 +211,6 @@ export default createRoute(async (c) => {
                        className="px-4 py-3 border-b border-gray-50 hover:bg-gray-100 cursor-pointer bank-item flex justify-between items-center"
                        data-name={bank.bank_name}
                        data-code={bank.transfer_code}
-                       onclick={`window.selectBank('${(bank.bank_name || '').replace(/'/g, "\\'")}')`}
                      >
                        <span className="font-bold text-gray-800 text-sm">{bank.bank_name}</span>
                        <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-sm font-mono tracking-widest">{bank.transfer_code}</span>
@@ -289,12 +293,10 @@ export default createRoute(async (c) => {
           toast.innerHTML = '<span class="mr-2 text-lg">' + (isError ? '⚠' : '✓') + '</span><span>' + message + '</span>';
           container.appendChild(toast);
           
-          // Animasikan masuk
           requestAnimationFrame(() => {
             toast.classList.remove('translate-x-full', 'opacity-0');
           });
           
-          // Hilangkan otomatis setelah 3 detik
           setTimeout(() => {
             toast.classList.add('translate-x-full', 'opacity-0');
             setTimeout(() => toast.remove(), 300);
@@ -306,7 +308,6 @@ export default createRoute(async (c) => {
 
         window.openWithdrawModal = function(maxAmount) {
           const bankNum = document.getElementById('form_bank_number');
-          // Jika nomor rekening kosong, tolak dan munculkan toast error
           if (!bankNum || !bankNum.value.trim()) {
               showToast('Mohon lengkapi dan simpan Data Rekening Bank Anda terlebih dahulu di bawah!', 'error');
               return;
@@ -320,7 +321,6 @@ export default createRoute(async (c) => {
           const content = document.getElementById('withdraw-modal-content');
           
           modal.classList.remove('hidden');
-          // Trigger reflow untuk animasi
           void modal.offsetWidth;
           modal.classList.remove('opacity-0');
           content.classList.remove('scale-95');
@@ -337,7 +337,6 @@ export default createRoute(async (c) => {
           }, 300);
         };
 
-        // Format angka menjadi mata uang saat mengetik di dalam Modal
         const amountInput = document.getElementById('modal-input-amount');
         if(amountInput) {
            amountInput.addEventListener('input', function(e) {
@@ -363,12 +362,11 @@ export default createRoute(async (c) => {
               return;
           }
 
-          // Lolos validasi, masukkan nilai ke form hidden dan submit!
           document.getElementById('withdraw_amount').value = amount;
           document.getElementById('withdraw-form').submit();
         };
 
-        // === LOGIKA DROPDOWN BANK ===
+        // === LOGIKA DROPDOWN BANK (SISTEM DELEGASI TANPA ONCLICK INLINE) ===
         const searchInput = document.getElementById('bank-search-input');
         const hiddenInput = document.getElementById('hidden-bank-name');
         const bankList = document.getElementById('bank-list');
@@ -378,10 +376,12 @@ export default createRoute(async (c) => {
         if(searchInput) {
           searchInput.addEventListener('focus', () => { bankList.classList.remove('hidden'); });
           searchInput.addEventListener('blur', () => { setTimeout(() => bankList.classList.add('hidden'), 200); });
+          
           searchInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
             let count = 0;
             hiddenInput.value = e.target.value; 
+            
             bankItems.forEach(item => {
               const name = item.getAttribute('data-name').toLowerCase();
               const code = item.getAttribute('data-code') ? item.getAttribute('data-code').toLowerCase() : '';
@@ -394,11 +394,16 @@ export default createRoute(async (c) => {
             });
             if(notFound) notFound.style.display = count === 0 ? 'block' : 'none';
           });
-          window.selectBank = function(bankName) {
-            searchInput.value = bankName;
-            hiddenInput.value = bankName;
-            bankList.classList.add('hidden');
-          };
+
+          // Menggunakan Event Listener terpusat sebagai ganti onClick di JSX
+          bankItems.forEach(item => {
+            item.addEventListener('click', function() {
+              const name = this.getAttribute('data-name');
+              searchInput.value = name;
+              hiddenInput.value = name;
+              bankList.classList.add('hidden');
+            });
+          });
         }
       `}} />
 
