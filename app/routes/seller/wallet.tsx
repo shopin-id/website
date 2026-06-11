@@ -2,7 +2,7 @@ import { createRoute } from 'honox/factory'
 import { getAuthUser } from '../../utils/auth'
 import { generateId } from '../../utils/admin_utils'
 
-// === MESIN PENYIMPAN DATA (AKSI: UPDATE BANK & PENARIKAN) ===
+// === MESIN PENYIMPAN DATA (AKSI: UPDATE BANK & PENARIKAN DENGAN LOCKING) ===
 export const POST = createRoute(async (c) => {
   const db = c.env.DB
   const userAuth = await getAuthUser(c)
@@ -11,7 +11,9 @@ export const POST = createRoute(async (c) => {
   const formData = await c.req.formData()
   const actionType = formData.get('action_type') as string
 
+  // ==========================================
   // AKSI 1: SIMPAN DATA REKENING BANK
+  // ==========================================
   if (actionType === 'update_bank') {
     const bank_name = formData.get('bank_name') as string
     const bank_account_number = formData.get('bank_account_number') as string
@@ -26,40 +28,58 @@ export const POST = createRoute(async (c) => {
 
       return c.redirect('/seller/wallet?success=bank_updated')
     } catch (err) {
+      console.error("Gagal menyimpan rekening:", err)
       return c.redirect('/seller/wallet?err=1')
     }
   }
 
-  // AKSI 2: PROSES PENARIKAN DANA
+  // ==========================================
+  // AKSI 2: PROSES PENARIKAN DANA (ANTI-RACE CONDITION)
+  // ==========================================
   if (actionType === 'withdraw') {
     const amountStr = formData.get('amount') as string
     const amount = parseInt(amountStr, 10)
+    const notes = formData.get('notes') as string || '' // Menangkap catatan pengguna
 
     try {
       const user = await db.prepare("SELECT bank_name, bank_account_number FROM users WHERE id = ?").bind(userAuth.id).first()
-      if (!user || !user.bank_account_number) return c.redirect('/seller/wallet?err=no_bank')
+      if (!user || !user.bank_account_number) {
+        return c.redirect('/seller/wallet?err=no_bank')
+      }
 
       const store = await db.prepare("SELECT id FROM stores WHERE user_id = ?").bind(userAuth.id).first()
       if (!store) return c.redirect('/seller/wallet?err=1')
 
       const wallet = await db.prepare("SELECT id, available_balance FROM vendor_wallets WHERE store_id = ?").bind(store.id).first()
-      if (!wallet || (wallet.available_balance as number) < amount || amount <= 0) {
+      if (!wallet || amount <= 0) {
          return c.redirect('/seller/wallet?err=insufficient')
       }
 
+      // PROTEKSI UTAMA RACE CONDITION:
+      // Jalankan update kondisional atomik. Jika baris saldo berubah di milidetik yang sama, 
+      // nilai meta.changes akan bernilai 0 dan request beruntun berikutnya otomatis diblokir.
+      const updateResult = await db.prepare(`
+        UPDATE vendor_wallets 
+        SET available_balance = available_balance - ? 
+        WHERE id = ? AND available_balance >= ?
+      `).bind(amount, wallet.id, amount).run()
+
+      if (!updateResult.meta || updateResult.meta.changes === 0) {
+        return c.redirect('/seller/wallet?err=insufficient')
+      }
+
+      // Setelah saldo berhasil dikunci dan dipotong dengan aman, buat data mutasi transaksi pending
       const trxId = 'TRX-' + generateId().substring(0, 8).toUpperCase()
       const desc = `Penarikan ke ${user.bank_name} - ${user.bank_account_number}`
 
-      await db.batch([
-        db.prepare("UPDATE vendor_wallets SET available_balance = available_balance - ? WHERE id = ?").bind(amount, wallet.id),
-        db.prepare(`
-          INSERT INTO wallet_transactions (id, wallet_id, type, amount, description, status)
-          VALUES (?, ?, 'withdrawal', ?, ?, 'pending')
-        `).bind(trxId, wallet.id, amount, desc)
-      ])
+      await db.prepare(`
+        INSERT INTO wallet_transactions (id, wallet_id, type, amount, description, status, notes)
+        VALUES (?, ?, 'withdrawal', ?, ?, 'pending', ?)
+      `).bind(trxId, wallet.id, amount, desc, notes).run()
 
       return c.redirect('/seller/wallet?success=withdraw_ok')
     } catch (err) {
+      console.error("Gagal melakukan proses penarikan:", err)
       return c.redirect('/seller/wallet?err=1')
     }
   }
@@ -85,7 +105,7 @@ export default createRoute(async (c) => {
     banks = results || []
   } catch(e) {}
 
-  // PENGATURAN PAGINASI TRANSAKSI
+  // Konfigurasi Paginasi Dinamis
   const rawPage = parseInt(c.req.query('page') || '1', 10)
   const page = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage
   
@@ -95,7 +115,6 @@ export default createRoute(async (c) => {
   
   const offset = (page - 1) * limit
 
-  // AMBIL DATA TRANSAKSI
   let transactions: any[] = []
   let totalRecords = 0
   if (wallet) {
@@ -108,7 +127,6 @@ export default createRoute(async (c) => {
 
   const totalPages = Math.ceil(totalRecords / limit)
   
-  // Logika 5 Paginasi Horizontal Dinamis
   let startPage = Math.max(1, page - 2)
   let endPage = Math.min(totalPages, page + 2)
   if (endPage - startPage < 4) {
@@ -147,6 +165,7 @@ export default createRoute(async (c) => {
                 <form id="withdraw-form" method="POST" action="/seller/wallet">
                   <input type="hidden" name="action_type" value="withdraw" /> 
                   <input type="hidden" name="amount" id="withdraw_amount" value="" />
+                  <input type="hidden" name="notes" id="withdraw_notes" value="" />
                   <button 
                     type="button"
                     disabled={available <= 0}
@@ -224,7 +243,7 @@ export default createRoute(async (c) => {
           </div>
         </details>
 
-        {/* RIWAYAT TRANSAKSI DENGAN PAGINASI PROFESIONAL */}
+        {/* RIWAYAT TRANSAKSI */}
         <div className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-5 md:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
@@ -232,11 +251,10 @@ export default createRoute(async (c) => {
               <p className="text-[10px] md:text-xs text-gray-500 mt-1">Daftar mutasi dompet Anda.</p>
             </div>
             
-            {/* Limit Selector */}
             <div className="flex items-center space-x-2">
               <span className="text-xs text-gray-500 font-medium">Tampilkan:</span>
               <select 
-                className="border border-gray-300 text-xs rounded-sm px-2 py-1.5 focus:outline-none focus:border-black font-bold"
+                className="border border-gray-300 text-xs rounded-sm px-2 py-1.5 focus:outline-none focus:border-black font-bold bg-white"
                 onChange="window.location.href='?limit='+this.value"
               >
                 {allowedLimits.map(l => (
@@ -247,11 +265,11 @@ export default createRoute(async (c) => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[600px]">
+            <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="bg-gray-50 text-[10px] uppercase tracking-widest text-gray-500">
                   <th className="px-5 py-4 font-bold border-b border-gray-200">ID / Waktu</th>
-                  <th className="px-5 py-4 font-bold border-b border-gray-200">Deskripsi</th>
+                  <th className="px-5 py-4 font-bold border-b border-gray-200">Deskripsi & Catatan</th>
                   <th className="px-5 py-4 font-bold border-b border-gray-200 text-right">Nominal</th>
                   <th className="px-5 py-4 font-bold border-b border-gray-200 text-center">Status</th>
                 </tr>
@@ -279,7 +297,14 @@ export default createRoute(async (c) => {
                           <div className="font-mono text-xs text-gray-900">{t.id}</div>
                           <div className="text-[10px] text-gray-400 mt-1">{formattedDate}</div>
                         </td>
-                        <td className="px-5 py-4 text-gray-700">{t.description || t.type}</td>
+                        <td className="px-5 py-4">
+                          <div className="text-gray-700 font-medium">{t.description || t.type}</div>
+                          {t.notes && (
+                            <div className="text-xs text-amber-700 bg-amber-50 rounded-sm px-2 py-1 mt-1 border border-amber-100 w-fit max-w-md">
+                              <strong>Memo:</strong> {t.notes}
+                            </div>
+                          )}
+                        </td>
                         <td className={`px-5 py-4 font-black text-right ${amountClass}`}>
                           {sign} Rp {t.amount.toLocaleString('id-ID')}
                         </td>
@@ -292,7 +317,7 @@ export default createRoute(async (c) => {
             </table>
           </div>
 
-          {/* KONTROL PAGINASI MOBILE FRIENDLY */}
+          {/* PAGINASI MOBILE FRIENDLY HORIZONTAL */}
           {totalPages > 1 && (
             <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
               <p className="text-[10px] md:text-xs text-gray-500 hidden sm:block">
@@ -300,7 +325,6 @@ export default createRoute(async (c) => {
               </p>
               
               <div className="flex space-x-1 sm:space-x-2 w-full sm:w-auto justify-center sm:justify-end">
-                {/* Tombol Prev */}
                 <a 
                   href={page > 1 ? `?page=${page - 1}&limit=${limit}` : '#'} 
                   className={`px-3 py-1.5 rounded-sm text-xs font-bold transition-colors border ${page > 1 ? 'border-gray-300 text-gray-700 hover:bg-gray-100 bg-white' : 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'}`}
@@ -308,7 +332,6 @@ export default createRoute(async (c) => {
                   &laquo; Prev
                 </a>
                 
-                {/* 5 Nomor Horizontal */}
                 {pagesArray.map(p => (
                   <a 
                     key={p} 
@@ -319,7 +342,6 @@ export default createRoute(async (c) => {
                   </a>
                 ))}
 
-                {/* Tombol Next */}
                 <a 
                   href={page < totalPages ? `?page=${page + 1}&limit=${limit}` : '#'} 
                   className={`px-3 py-1.5 rounded-sm text-xs font-bold transition-colors border ${page < totalPages ? 'border-gray-300 text-gray-700 hover:bg-gray-100 bg-white' : 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'}`}
@@ -333,29 +355,37 @@ export default createRoute(async (c) => {
 
       </div>
 
-      {/* MODAL PENARIKAN & TOAST */}
+      {/* TOAST CONTAINER */}
       <div id="toast-container" className="fixed top-5 right-5 z-[10000] flex flex-col gap-3"></div>
       
+      {/* CUSTOM MODAL DENGAN TAMBAHAN FORM INPUT CATATAN */}
       <div id="withdraw-modal" className="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity opacity-0 duration-300 px-4">
         <div className="bg-white rounded-sm shadow-2xl p-6 w-full max-w-md transform scale-95 transition-transform duration-300" id="withdraw-modal-content">
            <h3 className="text-lg md:text-xl font-black text-gray-900 mb-2 uppercase tracking-tight">Penarikan Dana</h3>
            <p className="text-xs md:text-sm text-gray-500 mb-4">Masukkan nominal penarikan. Saldo maksimal Anda adalah <strong id="modal-max-amount" className="text-black"></strong>.</p>
            
-           <div className="relative mb-6">
-             <span className="absolute left-4 top-3.5 text-gray-500 font-bold">Rp</span>
-             <input type="text" id="modal-input-amount" className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-sm focus:ring-black focus:border-black font-black text-xl text-gray-900" placeholder="0" />
+           <div className="space-y-4 mb-6">
+             <div className="relative">
+               <span className="absolute left-4 top-3.5 text-gray-500 font-bold">Rp</span>
+               <input type="text" id="modal-input-amount" className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-sm focus:ring-black focus:border-black font-black text-xl text-gray-900" placeholder="0" />
+             </div>
+             
+             {/* INPUT CATATAN BARU PADA MODAL */}
+             <div>
+               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Catatan / Pesan Pengiriman Untuk Admin (Opsional)</label>
+               <textarea id="modal-input-notes" rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:ring-black text-xs font-semibold text-gray-800" placeholder="Contoh: Tolong proses ke rekening utama BCA ini ya min..."></textarea>
+             </div>
            </div>
 
            <div className="flex space-x-3">
-             <button type="button" onClick="closeWithdrawModal()" className="flex-1 py-3 md:py-3.5 bg-gray-100 text-gray-700 font-bold rounded-sm hover:bg-gray-200 transition-colors text-[10px] md:text-xs uppercase tracking-wider">Batal</button>
-             <button type="button" onClick="submitWithdrawal()" className="flex-1 py-3 md:py-3.5 bg-red-600 text-white font-bold rounded-sm hover:bg-red-700 transition-colors text-[10px] md:text-xs uppercase tracking-wider shadow-md">Konfirmasi Tarik</button>
+             <button type="button" onClick="closeWithdrawModal()" className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-sm hover:bg-gray-200 text-[10px] md:text-xs uppercase tracking-wider">Batal</button>
+             <button type="button" onClick="submitWithdrawal()" className="flex-1 py-3 bg-red-600 text-white font-bold rounded-sm hover:bg-red-700 text-[10px] md:text-xs uppercase tracking-wider shadow-md">Konfirmasi Tarik</button>
            </div>
         </div>
       </div>
 
-      {/* SCRIPT LOGIKA UX */}
+      {/* SCRIPT UX LOGIC */}
       <script dangerouslySetInnerHTML={{__html: `
-        // === LOGIKA TOAST ===
         window.showToast = function(message, type = 'error') {
           const container = document.getElementById('toast-container');
           const toast = document.createElement('div');
@@ -373,9 +403,8 @@ export default createRoute(async (c) => {
         ${success === 'bank_updated' ? "showToast('Informasi Rekening Bank berhasil diperbarui!', 'success');" : ""}
         ${success === 'withdraw_ok' ? "showToast('Permintaan penarikan dana berhasil diproses! Menunggu transfer Admin.', 'success');" : ""}
         ${err === 'no_bank' ? "showToast('Gagal: Mohon isi data Rekening pada tab Informasi Rekening!', 'error');" : ""}
-        ${err === 'insufficient' ? "showToast('Gagal: Saldo tidak mencukupi atau nominal tidak valid.', 'error');" : ""}
+        ${err === 'insufficient' ? "showToast('Gagal: Saldo tidak mencukupi, sedang terkunci, atau nominal tidak valid.', 'error');" : ""}
 
-        // === LOGIKA MODAL PENARIKAN ===
         let maxWithdrawAmount = 0;
         window.openWithdrawModal = function(maxAmount) {
           const bankNum = document.getElementById('form_bank_number');
@@ -386,6 +415,7 @@ export default createRoute(async (c) => {
           maxWithdrawAmount = maxAmount;
           document.getElementById('modal-max-amount').innerText = 'Rp ' + new Intl.NumberFormat('id-ID').format(maxAmount);
           document.getElementById('modal-input-amount').value = '';
+          document.getElementById('modal-input-notes').value = '';
           const modal = document.getElementById('withdraw-modal');
           const content = document.getElementById('withdraw-modal-content');
           modal.classList.remove('hidden');
@@ -414,13 +444,17 @@ export default createRoute(async (c) => {
         window.submitWithdrawal = function() {
           const inputVal = document.getElementById('modal-input-amount').value.replace(/\\D/g, '');
           const amount = parseInt(inputVal, 10);
+          const notesVal = document.getElementById('modal-input-notes').value.trim();
+          
           if (isNaN(amount) || amount <= 0) { showToast('Nominal yang Anda masukkan tidak valid.', 'error'); return; }
           if (amount > maxWithdrawAmount) { showToast('Nominal penarikan melebihi saldo yang tersedia!', 'error'); return; }
+          
+          // Mengikat data jumlah penarikan beserta catatan pesan ke form tersembunyi
           document.getElementById('withdraw_amount').value = amount;
+          document.getElementById('withdraw-notes').value = notesVal;
           document.getElementById('withdraw-form').submit();
         };
 
-        // === LOGIKA DROPDOWN BANK ===
         const searchInput = document.getElementById('bank-search-input');
         const hiddenInput = document.getElementById('hidden-bank-name');
         const bankList = document.getElementById('bank-list');
