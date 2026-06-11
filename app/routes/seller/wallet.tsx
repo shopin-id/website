@@ -58,10 +58,9 @@ export const POST = createRoute(async (c) => {
       const desc = `Penarikan ke ${user.bank_name} - ${user.bank_account_number}`
 
       await db.batch([
-        // 1. Potong saldo yang bisa ditarik agar tidak bisa ditarik ganda (Double Spend)
+        // Potong saldo tersedia secara langsung
         db.prepare("UPDATE vendor_wallets SET available_balance = available_balance - ? WHERE id = ?").bind(amount, wallet.id),
-        
-        // 2. Masukkan ke riwayat transaksi dengan status eksplisit 'pending'
+        // Masukkan riwayat dengan status PENDING
         db.prepare(`
           INSERT INTO wallet_transactions (id, wallet_id, type, amount, description, status)
           VALUES (?, ?, 'withdrawal', ?, ?, 'pending')
@@ -118,32 +117,6 @@ export default createRoute(async (c) => {
           <a href="/seller" className="text-sm font-bold text-gray-500 hover:text-black">← Kembali ke Dasbor</a>
         </div>
 
-        {/* NOTIFIKASI STATUS */}
-        {success === 'bank_updated' && (
-          <div className="bg-green-50 border border-green-200 p-4 rounded-sm shadow-sm flex items-center">
-            <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-            <p className="text-sm text-green-700 font-bold">Informasi Rekening Bank berhasil diperbarui!</p>
-          </div>
-        )}
-        {success === 'withdraw_ok' && (
-          <div className="bg-green-50 border border-green-200 p-4 rounded-sm shadow-sm flex items-center">
-            <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-            <p className="text-sm text-green-700 font-bold">Permintaan penarikan dana berhasil diproses! Saldo Anda telah dipotong.</p>
-          </div>
-        )}
-        {err === 'no_bank' && (
-          <div className="bg-red-50 border border-red-200 p-4 rounded-sm shadow-sm flex items-center">
-            <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-            <p className="text-sm text-red-700 font-bold">Gagal: Mohon lengkapi Data Rekening Pencairan Anda di bawah!</p>
-          </div>
-        )}
-        {err === 'insufficient' && (
-          <div className="bg-red-50 border border-red-200 p-4 rounded-sm shadow-sm flex items-center">
-            <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-            <p className="text-sm text-red-700 font-bold">Gagal: Saldo tidak mencukupi atau nominal penarikan tidak valid.</p>
-          </div>
-        )}
-
         {/* KARTU SALDO */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
            <div className="bg-gradient-to-r from-gray-900 to-black p-8 rounded-sm shadow-md text-white relative overflow-hidden">
@@ -192,21 +165,20 @@ export default createRoute(async (c) => {
               
               <div className="relative">
                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Pilih / Cari Nama Bank</label>
-                 <input type="hidden" name="bank_name" id="hidden-bank-name" value={user?.bank_name as string || ''} />
+                 
+                 {/* PERBAIKAN: Menggunakan `value` bukan `defaultValue` */}
+                 <input type="hidden" name="bank_name" id="hidden-bank-name" value={(user?.bank_name as string) || ''} />
+                 
                  <input 
                    type="text" 
                    id="bank-search-input" 
-                   value={user?.bank_name as string || ''} 
+                   value={(user?.bank_name as string) || ''} 
                    placeholder="Ketik nama bank (Cth: BCA, BNI)..." 
                    className="w-full border border-gray-300 px-4 py-3 text-sm rounded-sm focus:ring-black bg-white font-bold" 
                    autoComplete="off" 
                    required
                  />
                  
-                 {/* PERBAIKAN SANGAT KRUSIAL: 
-                   Atribut onclick DIHAPUS TOTAL agar karakter aneh pada string nama bank tidak merusak struktur HTML.
-                   Klik akan di-handle murni oleh EventListener JavaScript di bawah.
-                 */}
                  <ul id="bank-list" className="absolute z-20 w-full bg-white border border-gray-200 mt-1 max-h-48 overflow-y-auto hidden shadow-xl rounded-sm">
                    {banks.map((bank: any, idx: number) => (
                      <li 
@@ -226,12 +198,13 @@ export default createRoute(async (c) => {
 
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Nomor Rekening</label>
+                {/* PERBAIKAN: Menggunakan `value` agar tidak kosong saat direfresh */}
                 <input 
                   type="text" 
                   name="bank_account_number" 
                   id="form_bank_number"
                   required 
-                  defaultValue={user?.bank_account_number as string || ''} 
+                  value={(user?.bank_account_number as string) || ''} 
                   className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-black text-sm font-bold tracking-wider" 
                   placeholder="Contoh: 8192000123" 
                 />
@@ -239,11 +212,12 @@ export default createRoute(async (c) => {
 
               <div className="md:col-span-2">
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Nama Pemilik Rekening</label>
+                {/* PERBAIKAN: Menggunakan `value` */}
                 <input 
                   type="text" 
                   name="bank_account_name" 
                   required 
-                  defaultValue={user?.bank_account_name as string || ''} 
+                  value={(user?.bank_account_name as string) || ''} 
                   className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-black text-sm font-bold uppercase" 
                   placeholder="Sesuai yang tertera di buku tabungan" 
                 />
@@ -264,7 +238,7 @@ export default createRoute(async (c) => {
       {/* CONTAINER UNTUK TOAST NOTIFICATION KUSTOM */}
       <div id="toast-container" className="fixed top-5 right-5 z-[10000] flex flex-col gap-3"></div>
 
-      {/* MODAL PENARIKAN (MENGGANTIKAN PROMPT/ALERT/CONFIRM BAWAAN JS) */}
+      {/* MODAL PENARIKAN ELEGAN (KUSTOM) */}
       <div id="withdraw-modal" className="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity opacity-0 duration-300">
         <div className="bg-white rounded-sm shadow-2xl p-6 w-11/12 max-w-md transform scale-95 transition-transform duration-300" id="withdraw-modal-content">
            <h3 className="text-xl font-black text-gray-900 mb-2 uppercase tracking-tight">Penarikan Dana</h3>
@@ -283,7 +257,7 @@ export default createRoute(async (c) => {
         </div>
       </div>
 
-      {/* SCRIPT LOGIKA PENCARIAN BANK & MODAL KUSTOM */}
+      {/* SCRIPT LOGIKA */}
       <script dangerouslySetInnerHTML={{__html: `
         // === LOGIKA TOAST NOTIFICATION KUSTOM ===
         window.showToast = function(message, type = 'error') {
@@ -303,8 +277,14 @@ export default createRoute(async (c) => {
           setTimeout(() => {
             toast.classList.add('translate-x-full', 'opacity-0');
             setTimeout(() => toast.remove(), 300);
-          }, 3000);
+          }, 4000);
         };
+
+        // Otomatis menembak Toast jika ada indikator response URL backend
+        ${success === 'bank_updated' ? "showToast('Informasi Rekening Bank berhasil diperbarui!', 'success');" : ""}
+        ${success === 'withdraw_ok' ? "showToast('Permintaan penarikan dana berhasil diproses! Menunggu Admin.', 'success');" : ""}
+        ${err === 'no_bank' ? "showToast('Gagal: Mohon lengkapi Data Rekening Pencairan Anda di bawah!', 'error');" : ""}
+        ${err === 'insufficient' ? "showToast('Gagal: Saldo tidak mencukupi atau nominal penarikan tidak valid.', 'error');" : ""}
 
         // === LOGIKA CUSTOM MODAL PENARIKAN ===
         let maxWithdrawAmount = 0;
@@ -369,7 +349,7 @@ export default createRoute(async (c) => {
           document.getElementById('withdraw-form').submit();
         };
 
-        // === LOGIKA DROPDOWN BANK (SISTEM DELEGASI TANPA ONCLICK INLINE) ===
+        // === LOGIKA DROPDOWN BANK (EVENT DELEGATION) ===
         const searchInput = document.getElementById('bank-search-input');
         const hiddenInput = document.getElementById('hidden-bank-name');
         const bankList = document.getElementById('bank-list');
@@ -378,6 +358,8 @@ export default createRoute(async (c) => {
 
         if(searchInput) {
           searchInput.addEventListener('focus', () => { bankList.classList.remove('hidden'); });
+          
+          // Penundaan untuk membiarkan klik elemen anak terjadi
           searchInput.addEventListener('blur', () => { setTimeout(() => bankList.classList.add('hidden'), 200); });
           
           searchInput.addEventListener('input', (e) => {
@@ -398,7 +380,6 @@ export default createRoute(async (c) => {
             if(notFound) notFound.style.display = count === 0 ? 'block' : 'none';
           });
 
-          // Menggunakan Event Listener terpusat sebagai ganti onClick di JSX
           bankItems.forEach(item => {
             item.addEventListener('click', function() {
               const name = this.getAttribute('data-name');
