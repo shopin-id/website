@@ -1,6 +1,28 @@
 import { jsxRenderer } from 'hono/jsx-renderer'
 
-export default jsxRenderer(({ children, title }) => {
+export default jsxRenderer(({ children, title }, c) => {
+  // === LOGIKA PENGECUALIAN HALAMAN LOGIN ===
+  const isLoginPage = c.req.path === '/admin/login' || c.req.path === '/admin/login/';
+
+  // Jika ini halaman login, render desain polos tanpa sidebar
+  if (isLoginPage) {
+    return (
+      <html lang="id">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+          <title>{title || 'Admin Login - ShopinId'}</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        {/* Latar belakang gelap khusus form login */}
+        <body className="bg-gray-900 min-h-screen font-sans antialiased text-white">
+          {children}
+        </body>
+      </html>
+    )
+  }
+
+  // === JIKA BUKAN HALAMAN LOGIN, RENDER SIDEBAR LENGKAP ===
   return (
     <html lang="id">
       <head>
