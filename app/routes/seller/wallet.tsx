@@ -39,7 +39,7 @@ export const POST = createRoute(async (c) => {
   if (actionType === 'withdraw') {
     const amountStr = formData.get('amount') as string
     const amount = parseInt(amountStr, 10)
-    const notes = formData.get('notes') as string || '' // Menangkap catatan pengguna
+    const notes = formData.get('notes') as string || '' 
 
     try {
       const user = await db.prepare("SELECT bank_name, bank_account_number FROM users WHERE id = ?").bind(userAuth.id).first()
@@ -55,9 +55,6 @@ export const POST = createRoute(async (c) => {
          return c.redirect('/seller/wallet?err=insufficient')
       }
 
-      // PROTEKSI UTAMA RACE CONDITION:
-      // Jalankan update kondisional atomik. Jika baris saldo berubah di milidetik yang sama, 
-      // nilai meta.changes akan bernilai 0 dan request beruntun berikutnya otomatis diblokir.
       const updateResult = await db.prepare(`
         UPDATE vendor_wallets 
         SET available_balance = available_balance - ? 
@@ -68,7 +65,6 @@ export const POST = createRoute(async (c) => {
         return c.redirect('/seller/wallet?err=insufficient')
       }
 
-      // Setelah saldo berhasil dikunci dan dipotong dengan aman, buat data mutasi transaksi pending
       const trxId = 'TRX-' + generateId().substring(0, 8).toUpperCase()
       const desc = `Penarikan ke ${user.bank_name} - ${user.bank_account_number}`
 
@@ -105,7 +101,6 @@ export default createRoute(async (c) => {
     banks = results || []
   } catch(e) {}
 
-  // Konfigurasi Paginasi Dinamis
   const rawPage = parseInt(c.req.query('page') || '1', 10)
   const page = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage
   
@@ -317,7 +312,7 @@ export default createRoute(async (c) => {
             </table>
           </div>
 
-          {/* PAGINASI MOBILE FRIENDLY HORIZONTAL */}
+          {/* PAGINASI HORIZONTAL */}
           {totalPages > 1 && (
             <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
               <p className="text-[10px] md:text-xs text-gray-500 hidden sm:block">
@@ -358,7 +353,7 @@ export default createRoute(async (c) => {
       {/* TOAST CONTAINER */}
       <div id="toast-container" className="fixed top-5 right-5 z-[10000] flex flex-col gap-3"></div>
       
-      {/* CUSTOM MODAL DENGAN TAMBAHAN FORM INPUT CATATAN */}
+      {/* CUSTOM MODAL */}
       <div id="withdraw-modal" className="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity opacity-0 duration-300 px-4">
         <div className="bg-white rounded-sm shadow-2xl p-6 w-full max-w-md transform scale-95 transition-transform duration-300" id="withdraw-modal-content">
            <h3 className="text-lg md:text-xl font-black text-gray-900 mb-2 uppercase tracking-tight">Penarikan Dana</h3>
@@ -370,7 +365,6 @@ export default createRoute(async (c) => {
                <input type="text" id="modal-input-amount" className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-sm focus:ring-black focus:border-black font-black text-xl text-gray-900" placeholder="0" />
              </div>
              
-             {/* INPUT CATATAN BARU PADA MODAL */}
              <div>
                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Catatan / Pesan Pengiriman Untuk Admin (Opsional)</label>
                <textarea id="modal-input-notes" rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:ring-black text-xs font-semibold text-gray-800" placeholder="Contoh: Tolong proses ke rekening utama BCA ini ya min..."></textarea>
@@ -449,9 +443,9 @@ export default createRoute(async (c) => {
           if (isNaN(amount) || amount <= 0) { showToast('Nominal yang Anda masukkan tidak valid.', 'error'); return; }
           if (amount > maxWithdrawAmount) { showToast('Nominal penarikan melebihi saldo yang tersedia!', 'error'); return; }
           
-          // Mengikat data jumlah penarikan beserta catatan pesan ke form tersembunyi
+          // === PERBAIKAN TYPO: Menggunakan underscore withdraw_notes ===
           document.getElementById('withdraw_amount').value = amount;
-          document.getElementById('withdraw-notes').value = notesVal;
+          document.getElementById('withdraw_notes').value = notesVal;
           document.getElementById('withdraw-form').submit();
         };
 
