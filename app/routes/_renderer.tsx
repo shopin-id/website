@@ -1,5 +1,5 @@
 import { jsxRenderer } from 'hono/jsx-renderer'
-import { Script } from 'honox/server' // <--- INI SANGAT PENTING
+import { Script } from 'honox/server'
 
 export default jsxRenderer(({ children, title }) => {
   return (
