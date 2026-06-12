@@ -42,6 +42,23 @@ export const POST = createRoute(async (c) => {
     const notes = formData.get('notes') as string || '' 
 
     try {
+      // === BACA BATAS MINIMAL PENARIKAN DARI JSON ===
+      let minWithdrawal = 50000; // Fallback jika kosong
+      try {
+        const settingRow = await db.prepare("SELECT config_json FROM store_settings WHERE id = 'global'").first();
+        if (settingRow && settingRow.config_json) {
+          const config = JSON.parse(settingRow.config_json as string);
+          if (config.min_withdrawal) minWithdrawal = parseInt(config.min_withdrawal, 10);
+        }
+      } catch(e) {
+        console.error("Gagal membaca settings JSON:", e);
+      }
+
+      if (amount < minWithdrawal) {
+         return c.redirect(`/seller/wallet?err=under_min&min=${minWithdrawal}`)
+      }
+      // ==============================================
+
       const user = await db.prepare("SELECT bank_name, bank_account_number FROM users WHERE id = ?").bind(userAuth.id).first()
       if (!user || !user.bank_account_number) {
         return c.redirect('/seller/wallet?err=no_bank')
@@ -101,6 +118,17 @@ export default createRoute(async (c) => {
     banks = results || []
   } catch(e) {}
 
+  // === BACA BATAS MINIMAL PENARIKAN DARI JSON UNTUK TAMPILAN ===
+  let minWithdrawal = 50000;
+  try {
+    const settingRow = await db.prepare("SELECT config_json FROM store_settings WHERE id = 'global'").first();
+    if (settingRow && settingRow.config_json) {
+      const config = JSON.parse(settingRow.config_json as string);
+      if (config.min_withdrawal) minWithdrawal = parseInt(config.min_withdrawal, 10);
+    }
+  } catch(e) {}
+  // =============================================================
+
   const rawPage = parseInt(c.req.query('page') || '1', 10)
   const page = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage
   
@@ -136,6 +164,7 @@ export default createRoute(async (c) => {
   
   const success = c.req.query('success')
   const err = c.req.query('err')
+  const minLimitErr = c.req.query('min') || minWithdrawal
 
   return c.render(
     <div className="w-full bg-[#f4f7fc] min-h-screen py-10 px-2 md:px-4 relative">
@@ -163,12 +192,15 @@ export default createRoute(async (c) => {
                   <input type="hidden" name="notes" id="withdraw_notes" value="" />
                   <button 
                     type="button"
-                    disabled={available <= 0}
-                    onClick={`openWithdrawModal(${available})`}
-                    className={`px-5 py-2 md:px-6 md:py-2.5 rounded-sm font-bold text-xs md:text-sm uppercase tracking-wide transition-colors ${available > 0 ? 'bg-white text-black hover:bg-gray-100 shadow-sm' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
+                    disabled={available < minWithdrawal}
+                    onClick={`openWithdrawModal(${available}, ${minWithdrawal})`}
+                    className={`px-5 py-2 md:px-6 md:py-2.5 rounded-sm font-bold text-xs md:text-sm uppercase tracking-wide transition-colors ${available >= minWithdrawal ? 'bg-white text-black hover:bg-gray-100 shadow-sm' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
                   >
                      Tarik Dana
                   </button>
+                  {available < minWithdrawal && available > 0 && (
+                    <p className="text-[9px] mt-2 text-rose-400 font-bold tracking-wider">Minimal penarikan: Rp {minWithdrawal.toLocaleString('id-ID')}</p>
+                  )}
                 </form>
              </div>
              <div className="absolute -right-10 -bottom-10 opacity-10">
@@ -357,7 +389,10 @@ export default createRoute(async (c) => {
       <div id="withdraw-modal" className="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity opacity-0 duration-300 px-4">
         <div className="bg-white rounded-sm shadow-2xl p-6 w-full max-w-md transform scale-95 transition-transform duration-300" id="withdraw-modal-content">
            <h3 className="text-lg md:text-xl font-black text-gray-900 mb-2 uppercase tracking-tight">Penarikan Dana</h3>
-           <p className="text-xs md:text-sm text-gray-500 mb-4">Masukkan nominal penarikan. Saldo maksimal Anda adalah <strong id="modal-max-amount" className="text-black"></strong>.</p>
+           <p className="text-xs md:text-sm text-gray-500 mb-4">
+             Batas minimal: <strong id="modal-min-amount" className="text-red-600"></strong><br/>
+             Saldo maksimal: <strong id="modal-max-amount" className="text-black"></strong>.
+           </p>
            
            <div className="space-y-4 mb-6">
              <div className="relative">
@@ -398,18 +433,25 @@ export default createRoute(async (c) => {
         ${success === 'withdraw_ok' ? "showToast('Permintaan penarikan dana berhasil diproses! Menunggu transfer Admin.', 'success');" : ""}
         ${err === 'no_bank' ? "showToast('Gagal: Mohon isi data Rekening pada tab Informasi Rekening!', 'error');" : ""}
         ${err === 'insufficient' ? "showToast('Gagal: Saldo tidak mencukupi, sedang terkunci, atau nominal tidak valid.', 'error');" : ""}
+        ${err === 'under_min' ? `showToast('Gagal: Minimal penarikan adalah Rp ${Number(minLimitErr).toLocaleString('id-ID')}!', 'error');` : ""}
 
         let maxWithdrawAmount = 0;
-        window.openWithdrawModal = function(maxAmount) {
+        let minWithdrawAmount = 0;
+        
+        window.openWithdrawModal = function(maxAmount, minAmount) {
           const bankNum = document.getElementById('form_bank_number');
           if (!bankNum || !bankNum.value.trim()) {
               showToast('Mohon buka tab Rekening dan simpan Data Bank Anda terlebih dahulu!', 'error');
               return;
           }
           maxWithdrawAmount = maxAmount;
+          minWithdrawAmount = minAmount;
+          
           document.getElementById('modal-max-amount').innerText = 'Rp ' + new Intl.NumberFormat('id-ID').format(maxAmount);
+          document.getElementById('modal-min-amount').innerText = 'Rp ' + new Intl.NumberFormat('id-ID').format(minAmount);
           document.getElementById('modal-input-amount').value = '';
           document.getElementById('modal-input-notes').value = '';
+          
           const modal = document.getElementById('withdraw-modal');
           const content = document.getElementById('withdraw-modal-content');
           modal.classList.remove('hidden');
@@ -440,10 +482,12 @@ export default createRoute(async (c) => {
           const amount = parseInt(inputVal, 10);
           const notesVal = document.getElementById('modal-input-notes').value.trim();
           
-          if (isNaN(amount) || amount <= 0) { showToast('Nominal yang Anda masukkan tidak valid.', 'error'); return; }
+          if (isNaN(amount) || amount < minWithdrawAmount) { 
+            showToast('Nominal di bawah batas minimal (Rp ' + new Intl.NumberFormat('id-ID').format(minWithdrawAmount) + ')', 'error'); 
+            return; 
+          }
           if (amount > maxWithdrawAmount) { showToast('Nominal penarikan melebihi saldo yang tersedia!', 'error'); return; }
           
-          // === PERBAIKAN TYPO: Menggunakan underscore withdraw_notes ===
           document.getElementById('withdraw_amount').value = amount;
           document.getElementById('withdraw_notes').value = notesVal;
           document.getElementById('withdraw-form').submit();
