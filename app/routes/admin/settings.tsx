@@ -81,11 +81,13 @@ export default createRoute(async (c) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Nama Platform (Site Name)</label>
-              <input type="text" name="site_name" defaultValue={config['site_name'] || ''} required className="w-full border border-gray-300 px-4 py-3 rounded-sm text-sm focus:ring-black focus:border-black font-bold text-gray-900 bg-white" placeholder="Contoh: ShopinId" />
+              {/* PERBAIKAN: Menggunakan `value` */}
+              <input type="text" name="site_name" value={config['site_name'] || ''} required className="w-full border border-gray-300 px-4 py-3 rounded-sm text-sm focus:ring-black focus:border-black font-bold text-gray-900 bg-white" placeholder="Contoh: ShopinId" />
             </div>
             <div className="md:col-span-2">
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Deskripsi / Tagline Singkat</label>
-              <textarea name="site_description" rows={2} defaultValue={config['site_description'] || ''} required className="w-full border border-gray-300 px-4 py-3 rounded-sm text-sm focus:ring-black focus:border-black text-gray-700 bg-white" placeholder="Slogan atau deskripsi platform..."></textarea>
+              {/* PERBAIKAN: Textarea meletakkan nilai di antara tag pembuka dan penutup */}
+              <textarea name="site_description" rows={2} required className="w-full border border-gray-300 px-4 py-3 rounded-sm text-sm focus:ring-black focus:border-black text-gray-700 bg-white" placeholder="Slogan atau deskripsi platform...">{config['site_description'] || ''}</textarea>
             </div>
           </div>
         </div>
@@ -99,11 +101,13 @@ export default createRoute(async (c) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Email Bantuan</label>
-              <input type="email" name="contact_email" defaultValue={config['contact_email'] || ''} required className="w-full border border-gray-300 px-4 py-3 rounded-sm text-sm focus:ring-black focus:border-black text-gray-900 bg-white" placeholder="support@domain.com" />
+              {/* PERBAIKAN: Menggunakan `value` */}
+              <input type="email" name="contact_email" value={config['contact_email'] || ''} required className="w-full border border-gray-300 px-4 py-3 rounded-sm text-sm focus:ring-black focus:border-black text-gray-900 bg-white" placeholder="support@domain.com" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Nomor Telepon / WhatsApp</label>
-              <input type="text" name="contact_phone" defaultValue={config['contact_phone'] || ''} required className="w-full border border-gray-300 px-4 py-3 rounded-sm text-sm focus:ring-black focus:border-black text-gray-900 bg-white" placeholder="081234567890" />
+              {/* PERBAIKAN: Menggunakan `value` */}
+              <input type="text" name="contact_phone" value={config['contact_phone'] || ''} required className="w-full border border-gray-300 px-4 py-3 rounded-sm text-sm focus:ring-black focus:border-black text-gray-900 bg-white" placeholder="081234567890" />
             </div>
           </div>
         </div>
@@ -118,7 +122,8 @@ export default createRoute(async (c) => {
             <div>
               <label className="block text-[10px] font-bold text-rose-600 uppercase tracking-wider mb-2">Potongan Komisi Admin (%)</label>
               <div className="relative">
-                <input type="number" min="0" max="100" name="admin_fee_percent" defaultValue={config['admin_fee_percent'] || ''} required className="w-full border border-gray-300 px-4 py-3 rounded-sm text-sm focus:ring-rose-500 focus:border-rose-500 font-black text-rose-700 bg-white" placeholder="5" />
+                {/* PERBAIKAN: Menggunakan `value` */}
+                <input type="number" min="0" max="100" name="admin_fee_percent" value={config['admin_fee_percent'] || ''} required className="w-full border border-gray-300 px-4 py-3 rounded-sm text-sm focus:ring-rose-500 focus:border-rose-500 font-black text-rose-700 bg-white" placeholder="5" />
                 <span className="absolute right-4 top-3.5 text-gray-400 font-bold">%</span>
               </div>
               <p className="text-[9px] text-gray-500 mt-1 italic">Potongan dari setiap penjualan berhasil vendor.</p>
@@ -127,7 +132,8 @@ export default createRoute(async (c) => {
               <label className="block text-[10px] font-bold text-teal-600 uppercase tracking-wider mb-2">Batas Minimal Penarikan (Rp)</label>
               <div className="relative">
                 <span className="absolute left-4 top-3.5 text-gray-400 font-bold">Rp</span>
-                <input type="number" min="0" name="min_withdrawal" defaultValue={config['min_withdrawal'] || ''} required className="w-full border border-gray-300 pl-10 pr-4 py-3 rounded-sm text-sm focus:ring-teal-500 focus:border-teal-500 font-black text-teal-700 bg-white" placeholder="50000" />
+                {/* PERBAIKAN: Menggunakan `value` */}
+                <input type="number" min="0" name="min_withdrawal" value={config['min_withdrawal'] || ''} required className="w-full border border-gray-300 pl-10 pr-4 py-3 rounded-sm text-sm focus:ring-teal-500 focus:border-teal-500 font-black text-teal-700 bg-white" placeholder="50000" />
               </div>
               <p className="text-[9px] text-gray-500 mt-1 italic">Syarat saldo minimal untuk melakukan "Tarik Dana".</p>
             </div>
