@@ -8,6 +8,10 @@ export default createRoute(async (c) => {
   const user = await getAuthUser(c)
   if (!user) return c.redirect('/login')
 
+  // === PERBAIKAN: Ambil Email Asli dari Database agar tidak undefined ===
+  const userData = await db.prepare("SELECT email FROM users WHERE id = ?").bind(user.id).first()
+  const userEmail = userData?.email || 'email-tidak-ditemukan'
+
   // 2. Ambil data Toko beserta informasi detail Level Membership-nya
   const store = await db.prepare(`
     SELECT s.*, ml.level_name, ml.product_limit 
@@ -27,6 +31,28 @@ export default createRoute(async (c) => {
   // 4. Ambil saldo dompet vendor saat ini untuk dipajang di dasbor
   const wallet = await db.prepare("SELECT available_balance FROM vendor_wallets WHERE store_id = ?").bind(store.id).first()
   const balance = (wallet?.available_balance as number) || 0
+
+  // === PERBAIKAN: Baca WA dari JSON store_settings dan ubah 0 jadi 62 ===
+  let waNumber = '6281234567890'
+  try {
+    const settingRow = await db.prepare("SELECT config_json FROM store_settings WHERE id = 'global'").first()
+    if (settingRow && settingRow.config_json) {
+      const config = JSON.parse(settingRow.config_json as string)
+      if (config.contact_phone) {
+        let rawPhone = config.contact_phone.replace(/\D/g, '')
+        if (rawPhone.startsWith('0')) {
+          waNumber = '62' + rawPhone.substring(1)
+        } else {
+          waNumber = rawPhone
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Gagal membaca WA dari store_settings", e)
+  }
+
+  const waMessage = encodeURIComponent(`Halo Admin ShopinId,\nSaya ingin mengajukan upgrade tingkatan Level untuk toko saya: *${store.name}* (${userEmail}). Mohon infonya.`)
+  const waLink = `https://wa.me/${waNumber}?text=${waMessage}`
 
   return c.render(
     <div className="bg-transparent min-h-screen pb-12">
@@ -58,8 +84,8 @@ export default createRoute(async (c) => {
               </span>
            </div>
            
-           {/* Tombol Tingkatkan Level memicu instruksi upgrade */}
-           <a href={`https://wa.me/${c.env.ADMIN_WHATSAPP || '6281234567890'}?text=${encodeURIComponent(`Halo Admin,\nSaya ingin mengajukan upgrade tingkatan Level untuk toko saya: *${store.name}* (${user.email}). Mohon infonya.`)}`} 
+           {/* Tombol Tingkatkan Level memicu instruksi upgrade via WA Asli */}
+           <a href={waLink} 
               target="_blank"
               className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-widest px-5 py-3 rounded-sm text-center shadow-sm transition-all active:scale-95">
               Tingkatkan Level
