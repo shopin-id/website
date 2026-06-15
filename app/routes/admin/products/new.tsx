@@ -272,7 +272,7 @@ export default createRoute(async (c) => {
                     const apiData = new FormData();
                     apiData.append('file', file);
 
-                    const response = await fetch('/api/media', {
+                    const response = await fetch('/api/upload', {
                         method: 'POST',
                         body: apiData
                     });
