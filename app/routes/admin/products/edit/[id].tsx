@@ -34,7 +34,7 @@ export const POST = createRoute(async (c) => {
   const inclusions = formData.get('inclusions') as string || ''
   const brand_serial = formData.get('brand_serial') as string || ''
 
-  // 2. TANGKAP ARRAY IMAGES (Berisi gambar lama + gambar baru dari API /api/media)
+  // 2. TANGKAP ARRAY IMAGES (Berisi gambar lama + gambar baru dari API /api/upload)
   const imagesArray = formData.getAll('images[]') as string[]
   const imagesJson = JSON.stringify(imagesArray.filter(url => url.trim() !== ''))
 
