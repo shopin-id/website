@@ -314,7 +314,7 @@ export default createRoute(async (c) => {
                     apiData.append('file', file);
 
                     // Panggil rute API Internal Cloudflare Pages Anda
-                    const response = await fetch('/api/media', {
+                    const response = await fetch('/api/upload', {
                         method: 'POST',
                         body: apiData
                     });
