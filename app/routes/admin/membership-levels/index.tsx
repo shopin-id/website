@@ -14,11 +14,14 @@ export const POST = createRoute(async (c) => {
     const name = formData.get('level_name') as string
     const price = parseFloat(formData.get('price') as string) || 0
     const bonus = parseFloat(formData.get('bonus') as string) || 0
-    const product_limit = parseInt(formData.get('product_limit') as string, 10) || 50
+    
+    // BACA STRING LANGSUNG: Jika form kosong, jadikan 50. Jika ada isinya (termasuk "0"), jadikan angka.
+    const limitRaw = formData.get('product_limit') as string
+    const product_limit = (limitRaw !== null && limitRaw.trim() !== '') ? parseInt(limitRaw, 10) : 50
+    
     const benefit = formData.get('benefit') as string
     const id = 'LVL-' + generateId().substring(0, 6).toUpperCase()
 
-    // Pastikan tabel mendukung kolom product_limit
     try { await db.prepare("ALTER TABLE membership_levels ADD COLUMN product_limit INTEGER DEFAULT 50").run() } catch(e) {}
 
     await db.prepare(`
@@ -30,7 +33,11 @@ export const POST = createRoute(async (c) => {
     const id = formData.get('id') as string
     const price = parseFloat(formData.get('price') as string) || 0
     const bonus = parseFloat(formData.get('bonus') as string) || 0
-    const product_limit = parseInt(formData.get('product_limit') as string, 10) || 50
+    
+    // BACA STRING LANGSUNG: Sama seperti di atas agar 0 tidak diubah otomatis
+    const limitRaw = formData.get('product_limit') as string
+    const product_limit = (limitRaw !== null && limitRaw.trim() !== '') ? parseInt(limitRaw, 10) : 50
+    
     const benefit = formData.get('benefit') as string
 
     try { await db.prepare("ALTER TABLE membership_levels ADD COLUMN product_limit INTEGER DEFAULT 50").run() } catch(e) {}
@@ -50,7 +57,6 @@ export default createRoute(async (c) => {
   const admin = await getAuthUser(c)
   if (!admin || admin.role !== 'admin') return c.redirect('/login')
 
-  // Defensif: Pastikan kolom ada sebelum query
   try { await db.prepare("ALTER TABLE membership_levels ADD COLUMN product_limit INTEGER DEFAULT 50").run() } catch(e) {}
 
   const { results: levels } = await db.prepare("SELECT * FROM membership_levels ORDER BY price ASC").all()
@@ -93,40 +99,44 @@ export default createRoute(async (c) => {
             </tr>
           </thead>
           <tbody className="text-sm text-gray-700">
-            {levels.map((lvl: any) => (
-              <tr key={lvl.id} className="border-b border-gray-100 hover:bg-gray-50">
-                <form action="/admin/membership-levels" method="POST" className="m-0">
-                  <input type="hidden" name="action" value="update" />
-                  <input type="hidden" name="id" value={lvl.id} />
-                  
-                  <td className="p-4 font-black text-gray-900">{lvl.level_name}</td>
-                  
-                  {/* PERBAIKAN: defaultValue diganti menjadi value */}
-                  <td className="p-4">
-                     <input type="number" name="price" value={lvl.price} className="border border-gray-300 px-2 py-1 text-xs rounded-sm focus:ring-black font-bold w-28" />
-                  </td>
-                  
-                  <td className="p-4">
-                     <input type="number" name="bonus" value={lvl.bonus} className="border border-gray-300 px-2 py-1 text-xs rounded-sm focus:ring-black font-bold w-24 text-green-600" />
-                  </td>
+            {levels.map((lvl: any) => {
+              // KUNCI UTAMA: Evaluasi dulu nilainya. Jika benar-benar kosong/null jadikan 50.
+              const currentLimit = (lvl.product_limit !== null && lvl.product_limit !== undefined) ? lvl.product_limit : 50;
 
-                  {/* INPUT BARU: Batas Unggah Produk */}
-                  <td className="p-4">
-                     <input type="number" name="product_limit" value={lvl.product_limit || 50} className="border border-red-300 px-2 py-1 text-xs rounded-sm focus:ring-red-500 font-bold w-20 text-red-600 bg-red-50" title="Isi 99999 untuk Unlimited" />
-                  </td>
-                  
-                  <td className="p-4">
-                     <input type="text" name="benefit" value={lvl.benefit || ''} className="border border-gray-300 px-2 py-1 text-xs rounded-sm focus:ring-black w-full min-w-[150px]" />
-                  </td>
-                  
-                  <td className="p-4 text-right">
-                     <button type="submit" className="bg-black text-white px-4 py-1.5 rounded-sm text-xs font-bold uppercase hover:bg-gray-800 transition-colors">
-                        Simpan
-                     </button>
-                  </td>
-                </form>
-              </tr>
-            ))}
+              return (
+                <tr key={lvl.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <form action="/admin/membership-levels" method="POST" className="m-0">
+                    <input type="hidden" name="action" value="update" />
+                    <input type="hidden" name="id" value={lvl.id} />
+                    
+                    <td className="p-4 font-black text-gray-900">{lvl.level_name}</td>
+                    
+                    <td className="p-4">
+                       <input type="number" name="price" value={String(lvl.price || 0)} className="border border-gray-300 px-2 py-1 text-xs rounded-sm focus:ring-black font-bold w-28" />
+                    </td>
+                    
+                    <td className="p-4">
+                       <input type="number" name="bonus" value={String(lvl.bonus || 0)} className="border border-gray-300 px-2 py-1 text-xs rounded-sm focus:ring-black font-bold w-24 text-green-600" />
+                    </td>
+
+                    {/* PAKSA JADI STRING: String(0) hasilnya "0", jadi atribut tidak akan dihilangkan oleh JSX */}
+                    <td className="p-4">
+                       <input type="number" name="product_limit" value={String(currentLimit)} className="border border-red-300 px-2 py-1 text-xs rounded-sm focus:ring-red-500 font-bold w-20 text-red-600 bg-red-50" title="Isi 99999 untuk Unlimited" />
+                    </td>
+                    
+                    <td className="p-4">
+                       <input type="text" name="benefit" value={lvl.benefit || ''} className="border border-gray-300 px-2 py-1 text-xs rounded-sm focus:ring-black w-full min-w-[150px]" />
+                    </td>
+                    
+                    <td className="p-4 text-right">
+                       <button type="submit" className="bg-black text-white px-4 py-1.5 rounded-sm text-xs font-bold uppercase hover:bg-gray-800 transition-colors">
+                          Simpan
+                       </button>
+                    </td>
+                  </form>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
